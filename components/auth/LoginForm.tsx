@@ -46,7 +46,11 @@ export function LoginForm() {
     });
     setLoading(false);
     if (res?.error) {
-      setError("Invalid email or password.");
+      setError(
+        res.code === "captcha"
+          ? "Security check failed. Refresh the page, complete the captcha again, and try signing in."
+          : "Invalid email or password."
+      );
       return;
     }
     router.push(callbackUrl);

@@ -1,11 +1,20 @@
 import "@/lib/ensure-origin-env";
-import NextAuth, { type NextAuthConfig } from "next-auth";
+import NextAuth, { type NextAuthConfig, CredentialsSignin } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { verifyTurnstileToken } from "@/lib/verify-turnstile";
+import { getClientIpFromHeaders } from "@/lib/client-ip";
+
+/** Distinct code so the login form can show a captcha message (not "wrong password"). */
+class CaptchaSignin extends CredentialsSignin {
+  constructor() {
+    super();
+    this.code = "captcha";
+  }
+}
 
 const providers: NextAuthConfig["providers"] = [
   Credentials({
@@ -15,16 +24,22 @@ const providers: NextAuthConfig["providers"] = [
       password: { label: "Password", type: "password" },
       turnstileToken: { label: "Turnstile", type: "text" },
     },
-    async authorize(credentials) {
+    async authorize(credentials, request) {
       if (!credentials?.email || !credentials?.password) return null;
       const email = String(credentials.email).trim();
       const password = String(credentials.password);
-      const turnstile = credentials.turnstileToken
-        ? String(credentials.turnstileToken)
-        : null;
+      const rawTs = credentials.turnstileToken;
+      const turnstile =
+        typeof rawTs === "string" && rawTs.trim().length > 0
+          ? rawTs.trim()
+          : null;
 
-      const captcha = await verifyTurnstileToken(turnstile, null);
-      if (!captcha.ok) return null;
+      const ip = getClientIpFromHeaders(request.headers);
+      const captcha = await verifyTurnstileToken(turnstile, ip);
+      if (!captcha.ok) {
+        console.warn("[auth] credentials: captcha failed", captcha.reason ?? "");
+        throw new CaptchaSignin();
+      }
 
       const user = await prisma.user.findFirst({
         where: { email: { equals: email, mode: "insensitive" } },
