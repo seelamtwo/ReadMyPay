@@ -1,4 +1,4 @@
-import { isProductionLike } from "@/lib/security-env";
+import { isVercelProduction } from "@/lib/security-env";
 
 type SiteverifyResponse = {
   success?: boolean;
@@ -7,8 +7,11 @@ type SiteverifyResponse = {
 
 /**
  * Verifies Cloudflare Turnstile token server-side.
- * In non-production-like environments, missing config allows requests (dev convenience).
- * In production, missing secret rejects verification.
+ * If TURNSTILE_SECRET_KEY is set, the token is always verified with Cloudflare.
+ * If the secret is missing: only **Vercel production** (VERCEL_ENV=production) rejects
+ * with "not configured". Local `npm start` uses NODE_ENV=production but is not Vercel,
+ * so missing secret skips verification (same as dev). Non-Vercel hosts that need captcha
+ * in production should set TURNSTILE_SECRET_KEY.
  */
 export async function verifyTurnstileToken(
   token: string | null | undefined,
@@ -16,7 +19,7 @@ export async function verifyTurnstileToken(
 ): Promise<{ ok: boolean; reason?: string }> {
   const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
   if (!secret) {
-    if (isProductionLike()) {
+    if (isVercelProduction()) {
       return { ok: false, reason: "Captcha is not configured on the server." };
     }
     return { ok: true };
