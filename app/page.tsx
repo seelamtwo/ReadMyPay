@@ -1,101 +1,128 @@
-import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, FileText, Lock, Sparkles } from "lucide-react";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import { TrustBanner } from "@/components/trust/TrustBanner";
+import { PrivacyTable } from "@/components/trust/PrivacyTable";
+import { Button } from "@/components/ui/button";
 
-export default function Home() {
+export const metadata = {
+  title: "Read My Pay — Plain-English financial documents",
+  description:
+    "Upload your pay stub, bank statement, or tax document — get a plain-English explanation in seconds. Nothing stored.",
+};
+
+export default async function HomePage() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="flex min-h-screen flex-col">
+      <Navbar />
+      <main className="flex-1">
+        <section className="border-b border-slate-200 bg-gradient-to-b from-emerald-50/80 to-white">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+            <p className="text-sm font-medium uppercase tracking-wide text-emerald-700">
+              Privacy-first AI
+            </p>
+            <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+              Financial documents, explained in plain English
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg text-slate-600">
+              Upload your pay stub, bank statement, or tax form and get a clear,
+              jargon-free walkthrough—plus practical savings tips. Your file is
+              never stored on our servers.
+            </p>
+            <div className="mt-10 flex flex-wrap gap-4">
+              <Link href="/signup">
+                <Button size="lg" className="gap-2">
+                  Get started <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button variant="outline" size="lg">
+                  Log in
+                </Button>
+              </Link>
+            </div>
+            <div className="mt-10 max-w-2xl">
+              <TrustBanner />
+            </div>
+          </div>
+        </section>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <h2 className="text-center text-2xl font-bold text-slate-900">
+            Built for real life
+          </h2>
+          <div className="mt-12 grid gap-8 sm:grid-cols-3">
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <FileText className="h-10 w-10 text-emerald-600" />
+              <h3 className="mt-4 font-semibold text-slate-900">
+                Pay stubs & tax forms
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Understand withholdings, boxes, and what each line means before
+                you file or negotiate.
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <Sparkles className="h-10 w-10 text-emerald-600" />
+              <h3 className="mt-4 font-semibold text-slate-900">
+                Actionable tips
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Each explanation ends with savings nudges grounded in what the
+                document shows—not investment advice.
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <Lock className="h-10 w-10 text-emerald-600" />
+              <h3 className="mt-4 font-semibold text-slate-900">
+                Zero document storage
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                PDFs, Word (.docx), and images stay in your browser or pass through memory
+                only. We keep email and usage counts—that’s it.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-t border-slate-200 bg-slate-50 py-16">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <h2 className="text-2xl font-bold text-slate-900">
+              What we keep vs. what we don’t
+            </h2>
+            <p className="mt-2 text-slate-600">
+              Aligned with a privacy-first processing model.
+            </p>
+            <div className="mt-8">
+              <PrivacyTable />
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-4 py-16 text-center sm:px-6">
+          <h2 className="text-2xl font-bold text-slate-900">Simple pricing</h2>
+          <div className="mx-auto mt-10 grid max-w-2xl gap-6 sm:grid-cols-2">
+            {[
+              { name: "Free", price: "$0", detail: "2 documents / month" },
+              { name: "Monthly", price: "$9/mo", detail: "20 documents / month" },
+            ].map((tier) => (
+              <div
+                key={tier.name}
+                className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm"
+              >
+                <p className="text-sm font-medium text-emerald-700">{tier.name}</p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">{tier.price}</p>
+                <p className="mt-2 text-sm text-slate-600">{tier.detail}</p>
+              </div>
+            ))}
+          </div>
+          <Link href="/signup" className="mt-10 inline-block">
+            <Button size="lg">Create free account</Button>
+          </Link>
+        </section>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      <Footer />
     </div>
   );
 }
