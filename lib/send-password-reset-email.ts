@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { getAppBaseUrl } from "@/lib/app-base-url";
+import { TRANSACTIONAL_EMAIL_FROM } from "@/lib/transactional-email-from";
 
 const RESET_PATH = "/reset-password";
 
@@ -49,10 +50,10 @@ export async function sendPasswordResetEmail(
     );
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = TRANSACTIONAL_EMAIL_FROM;
 
-  if (!apiKey || !from) {
+  if (!apiKey) {
     if (logLink) {
       console.warn(
         `[Read My Pay] Password reset: Resend not configured; no email sent. Use the URL above for ${to}.`

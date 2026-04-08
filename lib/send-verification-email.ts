@@ -1,5 +1,7 @@
 import { Resend } from "resend";
 import { getAppBaseUrl } from "@/lib/app-base-url";
+import { isResendSandboxSender } from "@/lib/resend-sender";
+import { TRANSACTIONAL_EMAIL_FROM } from "@/lib/transactional-email-from";
 
 const VERIFY_PATH = "/api/auth/verify-email";
 
@@ -25,9 +27,9 @@ export async function sendEmailVerification(
 ): Promise<SendResult> {
   const verifyUrl = buildEmailVerificationUrl(token);
   const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.EMAIL_FROM?.trim();
+  const from = TRANSACTIONAL_EMAIL_FROM;
 
-  if (!apiKey || !from) {
+  if (!apiKey) {
     if (process.env.NODE_ENV === "development") {
       console.warn(
         `[Read My Pay] Email verification (Resend not configured). Link for ${to}:\n${verifyUrl}`
@@ -62,6 +64,11 @@ export async function sendEmailVerification(
         code: "send_failed",
         message: error.message,
       };
+    }
+    if (isResendSandboxSender(from)) {
+      console.warn(
+        "[send-verification-email] From address uses @resend.dev; signups at other addresses may not receive mail. Use lib/transactional-email-from.ts with a verified domain address."
+      );
     }
     if (shouldLogVerificationLinkToConsole()) {
       console.warn(

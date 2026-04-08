@@ -24,6 +24,7 @@ export function VerifyEmailClient() {
   const pending = searchParams.get("pending") === "1";
   const error = searchParams.get("error");
   const emailFromQuery = searchParams.get("email")?.trim() ?? "";
+  const resendSandbox = searchParams.get("resendSandbox") === "1";
 
   const [email, setEmail] = useState(emailFromQuery);
   const [turnstileToken, setTurnstileToken] = useState("");
@@ -98,6 +99,29 @@ export function VerifyEmailClient() {
         {errorBanner && (
           <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             {errorBanner}
+          </p>
+        )}
+        {resendSandbox && (
+          <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            The app is using a Resend test From address (@resend.dev). Mail to
+            arbitrary signup addresses may not be delivered. Change{" "}
+            <code className="rounded bg-amber-100 px-1">
+              TRANSACTIONAL_EMAIL_FROM
+            </code>{" "}
+            in{" "}
+            <code className="rounded bg-amber-100 px-1">
+              lib/transactional-email-from.ts
+            </code>{" "}
+            to your verified domain address and configure it in{" "}
+            <a
+              href="https://resend.com/domains"
+              className="font-medium text-emerald-800 underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Resend → Domains
+            </a>
+            .
           </p>
         )}
         <p className="text-sm text-slate-600">

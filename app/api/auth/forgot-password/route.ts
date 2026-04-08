@@ -73,13 +73,13 @@ export async function POST(req: Request) {
         return NextResponse.json(
           {
             error:
-              "Password reset email is not configured. Set RESEND_API_KEY and EMAIL_FROM.",
+              "Password reset email is not configured. Set RESEND_API_KEY.",
           },
           { status: 503 }
         );
       }
       const resendHint =
-        "Typical causes: invalid RESEND_API_KEY; EMAIL_FROM must use a domain verified in Resend (Dashboard → Domains). For Resend’s test address `onboarding@resend.dev`, mail only goes to the email on your Resend account.";
+        "Typical causes: invalid RESEND_API_KEY, or the From address in lib/transactional-email-from.ts is not allowed in Resend (verify readmypay.com and support@ in Resend → Domains).";
       console.error(
         "[auth/forgot-password] Resend send_failed:",
         sent.message ?? "(no message)"

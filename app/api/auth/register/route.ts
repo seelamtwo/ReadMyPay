@@ -7,6 +7,8 @@ import { newPasswordSchema } from "@/lib/auth-password-zod";
 import { verifyTurnstileToken } from "@/lib/verify-turnstile";
 import { sendEmailVerification } from "@/lib/send-verification-email";
 import { getClientIpFromHeaders } from "@/lib/client-ip";
+import { isResendSandboxSender } from "@/lib/resend-sender";
+import { TRANSACTIONAL_EMAIL_FROM } from "@/lib/transactional-email-from";
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -83,7 +85,7 @@ export async function POST(req: Request) {
         return NextResponse.json(
           {
             error:
-              "Email is not configured. Set RESEND_API_KEY and EMAIL_FROM, or use development mode.",
+              "Email is not configured. Set RESEND_API_KEY (Resend), or use development mode.",
           },
           { status: 503 }
         );
@@ -100,7 +102,12 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      ok: true,
+      ...(isResendSandboxSender(TRANSACTIONAL_EMAIL_FROM)
+        ? { resendSandboxSender: true }
+        : {}),
+    });
   } catch {
     return NextResponse.json(
       { error: "Registration failed." },
