@@ -1,4 +1,5 @@
 import { isVercelProduction } from "@/lib/security-env";
+import { isTurnstileBypassed } from "@/lib/turnstile-bypass";
 
 type SiteverifyResponse = {
   success?: boolean;
@@ -17,6 +18,9 @@ export async function verifyTurnstileToken(
   token: string | null | undefined,
   remoteip?: string | null
 ): Promise<{ ok: boolean; reason?: string }> {
+  if (isTurnstileBypassed()) {
+    return { ok: true };
+  }
   const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
   if (!secret) {
     if (isVercelProduction()) {

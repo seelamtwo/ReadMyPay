@@ -38,23 +38,36 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const res = await signIn("credentials", {
-      email,
-      password,
-      turnstileToken,
-      redirect: false,
-    });
-    setLoading(false);
-    if (res?.error) {
+    try {
+      const res = await signIn("credentials", {
+        email,
+        password,
+        turnstileToken,
+        redirect: false,
+      });
+      if (res === undefined) {
+        setError(
+          "Could not reach the sign-in service. Check your connection and refresh the page."
+        );
+        return;
+      }
+      if (res.error) {
+        setError(
+          res.code === "captcha"
+            ? "Security check failed. Refresh the page, complete the captcha again, and try signing in."
+            : "Invalid email or password."
+        );
+        return;
+      }
+      router.push(callbackUrl);
+      router.refresh();
+    } catch {
       setError(
-        res.code === "captcha"
-          ? "Security check failed. Refresh the page, complete the captcha again, and try signing in."
-          : "Invalid email or password."
+        "Sign-in failed unexpectedly (often a browser extension or a bad response from the server). Refresh and try again."
       );
-      return;
+    } finally {
+      setLoading(false);
     }
-    router.push(callbackUrl);
-    router.refresh();
   }
 
   return (
