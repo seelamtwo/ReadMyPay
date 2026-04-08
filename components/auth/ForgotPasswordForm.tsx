@@ -13,12 +13,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  TurnstileField,
+  isTurnstileRequiredClient,
+} from "@/components/security/TurnstileField";
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,7 +33,10 @@ export function ForgotPasswordForm() {
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({
+          email: email.trim(),
+          turnstileToken: turnstileToken || undefined,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -91,12 +99,24 @@ export function ForgotPasswordForm() {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
+          <TurnstileField
+            className="flex justify-center"
+            onToken={(t) => setTurnstileToken(t)}
+            onExpire={() => setTurnstileToken("")}
+          />
           {error && (
             <p className="text-sm text-red-600" role="alert">
               {error}
             </p>
           )}
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={
+              loading ||
+              (isTurnstileRequiredClient() && !turnstileToken.trim())
+            }
+          >
             {loading ? "Sending…" : "Send reset link"}
           </Button>
         </form>

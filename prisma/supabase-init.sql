@@ -115,3 +115,18 @@ DO $$ BEGIN
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
+
+-- Security: RLS + revoke anon/authenticated (Supabase Data API). See prisma/supabase-rls.sql.
+REVOKE ALL ON TABLE public."User" FROM anon, authenticated;
+REVOKE ALL ON TABLE public."Account" FROM anon, authenticated;
+REVOKE ALL ON TABLE public."Session" FROM anon, authenticated;
+REVOKE ALL ON TABLE public."VerificationToken" FROM anon, authenticated;
+REVOKE ALL ON TABLE public."Subscription" FROM anon, authenticated;
+REVOKE ALL ON TABLE public."PasswordResetToken" FROM anon, authenticated;
+
+ALTER TABLE public."User" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Account" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Session" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."VerificationToken" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Subscription" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."PasswordResetToken" ENABLE ROW LEVEL SECURITY;

@@ -8,6 +8,7 @@ import {
   MULTI_NON_STATEMENT_MESSAGE,
 } from "@/lib/statement-detect";
 import { UNCATEGORIZED_LABEL } from "@/types/spending";
+import { rejectIfEmailNotVerified } from "@/lib/require-email-verified";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -91,6 +92,8 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.email || !session.user.id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const verifyBlock = rejectIfEmailNotVerified(session.user);
+  if (verifyBlock) return verifyBlock;
 
   let json: unknown;
   try {

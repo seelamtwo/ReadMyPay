@@ -1,30 +1,80 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import {
+  registerLimiter,
+  forgotPasswordLimiter,
+  loginLimiter,
+  resendVerificationLimiter,
+  rateLimitOr429,
+  getClientIpFromHeaders,
+} from "@/lib/rate-limit";
 
 export async function middleware(request: NextRequest) {
-  const secret =
-    process.env.AUTH_SECRET ??
-    process.env.NEXTAUTH_SECRET;
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+  const path = request.nextUrl.pathname;
+  const method = request.method;
+  const ip = getClientIpFromHeaders(request.headers);
+
+  if (method === "POST") {
+    let blocked: Response | null = null;
+    if (path === "/api/auth/register") {
+      blocked = await rateLimitOr429(registerLimiter, `reg:${ip}`);
+    } else if (path === "/api/auth/forgot-password") {
+      blocked = await rateLimitOr429(forgotPasswordLimiter, `fp:${ip}`);
+    } else if (path === "/api/auth/resend-verification") {
+      blocked = await rateLimitOr429(
+        resendVerificationLimiter,
+        `resend:${ip}`
+      );
+    } else if (
+      path === "/api/auth/callback/credentials" ||
+      path === "/api/auth/signin/credentials"
+    ) {
+      blocked = await rateLimitOr429(loginLimiter, `login:${ip}`);
+    }
+    if (blocked) return blocked;
+  }
 
   const token = await getToken({
     req: request,
     secret,
   });
 
-  const path = request.nextUrl.pathname;
-  const isProtected =
-    path.startsWith("/dashboard") || path.startsWith("/account");
-
-  if (isProtected && !token) {
+  if (
+    (path.startsWith("/dashboard") || path.startsWith("/account")) &&
+    !token
+  ) {
     const url = new URL("/login", request.url);
     url.searchParams.set("callbackUrl", path);
     return NextResponse.redirect(url);
+  }
+
+  if (
+    (path.startsWith("/dashboard") || path.startsWith("/account")) &&
+    token
+  ) {
+    const verifiedAt = token.emailVerifiedAt as number | undefined;
+    if (verifiedAt === 0) {
+      const url = new URL("/verify-email", request.url);
+      url.searchParams.set("pending", "1");
+      const email = token.email as string | undefined;
+      if (email) url.searchParams.set("email", email);
+      return NextResponse.redirect(url);
+    }
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/account/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/account/:path*",
+    "/api/auth/register",
+    "/api/auth/forgot-password",
+    "/api/auth/resend-verification",
+    "/api/auth/callback/credentials",
+    "/api/auth/signin/credentials",
+  ],
 };

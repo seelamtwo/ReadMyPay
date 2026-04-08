@@ -4,9 +4,12 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { sendPasswordResetEmail } from "@/lib/send-password-reset-email";
+import { verifyTurnstileToken } from "@/lib/verify-turnstile";
+import { getClientIpFromHeaders } from "@/lib/client-ip";
 
 const bodySchema = z.object({
   email: z.string().email(),
+  turnstileToken: z.string().optional(),
 });
 
 const TOKEN_TTL_MS = 60 * 60 * 1000;
@@ -32,6 +35,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid email." }, { status: 400 });
     }
     const emailInput = parsed.data.email.trim();
+    const ip = getClientIpFromHeaders(req.headers);
+    const captcha = await verifyTurnstileToken(parsed.data.turnstileToken, ip);
+    if (!captcha.ok) {
+      return NextResponse.json(
+        { error: captcha.reason ?? "Captcha verification failed." },
+        { status: 400 }
+      );
+    }
 
     const user = await prisma.user.findFirst({
       where: { email: { equals: emailInput, mode: "insensitive" } },

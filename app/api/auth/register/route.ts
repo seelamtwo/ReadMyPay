@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
+import { randomBytes, randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { newPasswordSchema } from "@/lib/auth-password-zod";
+import { verifyTurnstileToken } from "@/lib/verify-turnstile";
+import { sendEmailVerification } from "@/lib/send-verification-email";
+import { getClientIpFromHeaders } from "@/lib/client-ip";
 
 const registerSchema = z.object({
   email: z.string().email(),
   password: newPasswordSchema,
+  turnstileToken: z.string().optional(),
 });
+
+const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 
 export async function POST(req: Request) {
   try {
@@ -20,7 +27,16 @@ export async function POST(req: Request) {
       );
     }
     const email = parsed.data.email.trim().toLowerCase();
-    const { password } = parsed.data;
+    const { password, turnstileToken } = parsed.data;
+    const ip = getClientIpFromHeaders(req.headers);
+
+    const captcha = await verifyTurnstileToken(turnstileToken, ip);
+    if (!captcha.ok) {
+      return NextResponse.json(
+        { error: captcha.reason ?? "Captcha verification failed." },
+        { status: 400 }
+      );
+    }
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -35,15 +51,49 @@ export async function POST(req: Request) {
       data: {
         email,
         hashedPassword,
+        emailVerified: null,
         subscription: {
           create: {
-            stripeCustomerId: `pending_${crypto.randomUUID()}`,
+            stripeCustomerId: `pending_${randomUUID()}`,
           },
         },
       },
     });
 
-    return NextResponse.json({ ok: true, userId: user.id });
+    const token = randomBytes(32).toString("hex");
+    const expires = new Date(Date.now() + VERIFY_TTL_MS);
+
+    await prisma.verificationToken.deleteMany({
+      where: { identifier: email },
+    });
+    await prisma.verificationToken.create({
+      data: {
+        identifier: email,
+        token,
+        expires,
+      },
+    });
+
+    const sent = await sendEmailVerification(email, token);
+    if (!sent.ok) {
+      await prisma.user.delete({ where: { id: user.id } });
+      await prisma.verificationToken.deleteMany({ where: { identifier: email } });
+      if (sent.code === "not_configured") {
+        return NextResponse.json(
+          {
+            error:
+              "Email is not configured. Set RESEND_API_KEY and EMAIL_FROM, or use development mode.",
+          },
+          { status: 503 }
+        );
+      }
+      return NextResponse.json(
+        { error: "Could not send verification email. Try again later." },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(
       { error: "Registration failed." },

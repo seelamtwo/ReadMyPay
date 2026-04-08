@@ -12,12 +12,12 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://challenges.cloudflare.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "worker-src 'self' blob:",
-      "connect-src 'self' https://api.openai.com https://api.stripe.com https://*.stripe.com",
-      "frame-src https://js.stripe.com https://hooks.stripe.com",
+      "connect-src 'self' https://api.openai.com https://api.stripe.com https://*.stripe.com https://challenges.cloudflare.com",
+      "frame-src https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com",
     ].join("; "),
   },
 ];

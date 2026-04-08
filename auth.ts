@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { verifyTurnstileToken } from "@/lib/verify-turnstile";
 
 const providers: NextAuthConfig["providers"] = [
   Credentials({
@@ -11,11 +12,19 @@ const providers: NextAuthConfig["providers"] = [
     credentials: {
       email: { label: "Email", type: "email" },
       password: { label: "Password", type: "password" },
+      turnstileToken: { label: "Turnstile", type: "text" },
     },
     async authorize(credentials) {
       if (!credentials?.email || !credentials?.password) return null;
       const email = String(credentials.email).trim();
       const password = String(credentials.password);
+      const turnstile = credentials.turnstileToken
+        ? String(credentials.turnstileToken)
+        : null;
+
+      const captcha = await verifyTurnstileToken(turnstile, null);
+      if (!captcha.ok) return null;
+
       const user = await prisma.user.findFirst({
         where: { email: { equals: email, mode: "insensitive" } },
       });
@@ -57,9 +66,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
-        token.sub = user.id;
+      if (user?.id) {
         if (user.email) token.email = user.email;
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { emailVerified: true },
+        });
+        token.emailVerifiedAt = dbUser?.emailVerified
+          ? dbUser.emailVerified.getTime()
+          : 0;
       }
       return token;
     },
@@ -67,6 +82,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user && token.sub) {
         session.user.id = token.sub;
         if (token.email) session.user.email = token.email as string;
+        const at = token.emailVerifiedAt;
+        session.user.emailVerified =
+          typeof at === "number" && at > 0 ? new Date(at) : null;
       }
       return session;
     },

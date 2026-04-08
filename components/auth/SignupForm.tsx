@@ -17,6 +17,10 @@ import {
   passwordMeetsPolicy,
   MIN_PASSWORD_LENGTH,
 } from "@/lib/password-policy";
+import {
+  TurnstileField,
+  isTurnstileRequiredClient,
+} from "@/components/security/TurnstileField";
 
 function formatRegisterError(data: {
   error?: string | Record<string, string[] | undefined>;
@@ -37,15 +41,19 @@ export function SignupForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   const passwordsMatch =
     confirmPassword.length === 0 || password === confirmPassword;
   const policyOk = passwordMeetsPolicy(password);
+  const captchaOk =
+    !isTurnstileRequiredClient() || turnstileToken.trim().length > 0;
   const canSubmit =
     email.trim().length > 0 &&
     policyOk &&
     password === confirmPassword &&
-    confirmPassword.length > 0;
+    confirmPassword.length > 0 &&
+    captchaOk;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,14 +75,20 @@ export function SignupForm() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email,
+          password,
+          turnstileToken: turnstileToken || undefined,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(formatRegisterError(data));
         return;
       }
-      router.push("/login?registered=1");
+      router.push(
+        `/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`
+      );
     } catch {
       setError("Something went wrong.");
     } finally {
@@ -134,6 +148,11 @@ export function SignupForm() {
               </p>
             )}
           </div>
+          <TurnstileField
+            className="flex justify-center"
+            onToken={(t) => setTurnstileToken(t)}
+            onExpire={() => setTurnstileToken("")}
+          />
           {error && (
             <p className="text-sm text-red-600" role="alert">
               {error}

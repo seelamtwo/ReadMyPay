@@ -14,16 +14,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  TurnstileField,
+  isTurnstileRequiredClient,
+} from "@/components/security/TurnstileField";
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
   const resetSuccess = searchParams.get("reset") === "success";
+  const emailVerified = searchParams.get("verified") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   const showGoogle =
     process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
@@ -35,6 +41,7 @@ export function LoginForm() {
     const res = await signIn("credentials", {
       email,
       password,
+      turnstileToken,
       redirect: false,
     });
     setLoading(false);
@@ -61,6 +68,14 @@ export function LoginForm() {
             role="status"
           >
             Your password was updated. Sign in with your new password.
+          </p>
+        )}
+        {emailVerified && (
+          <p
+            className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+            role="status"
+          >
+            Email verified. You can sign in now.
           </p>
         )}
         <form onSubmit={onSubmit} className="space-y-4">
@@ -94,12 +109,24 @@ export function LoginForm() {
               </Link>
             </p>
           </div>
+          <TurnstileField
+            className="flex justify-center"
+            onToken={(t) => setTurnstileToken(t)}
+            onExpire={() => setTurnstileToken("")}
+          />
           {error && (
             <p className="text-sm text-red-600" role="alert">
               {error}
             </p>
           )}
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={
+              loading ||
+              (isTurnstileRequiredClient() && !turnstileToken.trim())
+            }
+          >
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>

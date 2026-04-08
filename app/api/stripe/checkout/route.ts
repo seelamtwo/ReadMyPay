@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
+import { rejectIfEmailNotVerified } from "@/lib/require-email-verified";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,8 @@ export async function POST(req: Request) {
   if (!session?.user?.email || !session.user.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const verifyBlock = rejectIfEmailNotVerified(session.user);
+  if (verifyBlock) return verifyBlock;
 
   const stripe = getStripe();
   if (!stripe) {

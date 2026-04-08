@@ -1,4 +1,5 @@
 import type { Tier } from "@prisma/client";
+import { isVercelProduction } from "@/lib/security-env";
 
 const LIMITS: Record<Tier, number> = {
   FREE: 2,
@@ -16,8 +17,15 @@ export function isOverLimit(
   return used >= docLimitForTier(tier);
 }
 
-/** Bypass monthly doc counter (local testing). `FINCLEAR_DISABLE_USAGE_LIMIT` still works. */
+/**
+ * Bypass monthly doc counter (local / preview only).
+ * Always disabled on Vercel production. `FINCLEAR_DISABLE_USAGE_LIMIT` still honored off prod.
+ */
 export function isDocsUsageLimitDisabled(): boolean {
+  if (isVercelProduction()) return false;
+  if (process.env.NODE_ENV === "production" && !process.env.VERCEL) {
+    return false;
+  }
   const a = process.env.READMY_PAY_DISABLE_USAGE_LIMIT;
   const b = process.env.FINCLEAR_DISABLE_USAGE_LIMIT;
   return (

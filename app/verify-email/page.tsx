@@ -1,0 +1,36 @@
+import Link from "next/link";
+import { Suspense } from "react";
+import { AppMark } from "@/components/brand/AppMark";
+import { VerifyEmailClient } from "@/components/auth/VerifyEmailClient";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+} from "@/components/ui/card";
+
+export const metadata = {
+  title: "Verify email",
+  description: "Confirm your Read My Pay email address",
+};
+
+function VerifyEmailFallback() {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader>Loading…</CardHeader>
+      <CardContent className="h-40 animate-pulse rounded-lg bg-slate-100" />
+    </Card>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4">
+      <Link href="/" className="mb-8 text-lg">
+        <AppMark />
+      </Link>
+      <Suspense fallback={<VerifyEmailFallback />}>
+        <VerifyEmailClient />
+      </Suspense>
+    </div>
+  );
+}

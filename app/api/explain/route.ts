@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import OpenAI from "openai";
 import { isDocsUsageLimitDisabled, isOverLimit } from "@/lib/usage";
+import { rejectIfEmailNotVerified } from "@/lib/require-email-verified";
 
 /** Node runtime: Prisma is not available on the Edge runtime without Accelerate. */
 export const runtime = "nodejs";
@@ -42,6 +43,8 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.email || !session.user.id) {
     return new Response("Unauthorized", { status: 401 });
   }
+  const verifyBlock = rejectIfEmailNotVerified(session.user);
+  if (verifyBlock) return verifyBlock;
 
   let body: unknown;
   try {
