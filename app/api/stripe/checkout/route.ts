@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
+import { getAppBaseUrl } from "@/lib/app-base-url";
 import { rejectIfEmailNotVerified } from "@/lib/require-email-verified";
 
 export const runtime = "nodejs";
@@ -55,15 +56,14 @@ export async function POST(req: Request) {
       });
     }
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const baseUrl = getAppBaseUrl();
 
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${baseUrl}/account?success=true`,
-      cancel_url: `${baseUrl}/account`,
+      success_url: `${baseUrl.replace(/\/+$/, "")}/account?success=true`,
+      cancel_url: `${baseUrl.replace(/\/+$/, "")}/account`,
       allow_promotion_codes: true,
     });
 

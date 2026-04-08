@@ -1,3 +1,4 @@
+import "@/lib/ensure-origin-env";
 import NextAuth, { type NextAuthConfig } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import Credentials from "next-auth/providers/credentials";
