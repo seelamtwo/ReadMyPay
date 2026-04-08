@@ -24,14 +24,21 @@ import {
 
 function formatRegisterError(data: {
   error?: string | Record<string, string[] | undefined>;
+  detail?: string;
 }): string {
   const err = data.error;
-  if (typeof err === "string") return err;
-  if (err && typeof err === "object") {
+  let base: string;
+  if (typeof err === "string") base = err;
+  else if (err && typeof err === "object") {
     const parts = Object.values(err).flat().filter(Boolean) as string[];
-    if (parts.length) return parts.join(" ");
+    base = parts.length ? parts.join(" ") : "Could not create account.";
+  } else {
+    base = "Could not create account.";
   }
-  return "Could not create account.";
+  if (typeof data.detail === "string" && data.detail.trim()) {
+    return `${base} (${data.detail.trim()})`;
+  }
+  return base;
 }
 
 export function SignupForm() {

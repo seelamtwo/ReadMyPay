@@ -88,8 +88,14 @@ export async function POST(req: Request) {
           { status: 503 }
         );
       }
+      const debug =
+        process.env.READ_MY_PAY_DEBUG_EMAIL?.trim() === "true" ||
+        process.env.READ_MY_PAY_DEBUG_EMAIL?.trim() === "1";
       return NextResponse.json(
-        { error: "Could not send verification email. Try again later." },
+        {
+          error: "Could not send verification email. Try again later.",
+          ...(debug && sent.message ? { detail: sent.message } : {}),
+        },
         { status: 502 }
       );
     }
