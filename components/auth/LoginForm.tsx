@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,10 +19,17 @@ import {
   isTurnstileRequiredClient,
 } from "@/components/security/TurnstileField";
 
+function sanitizeInternalPath(raw: string | null): string {
+  const fallback = "/dashboard";
+  if (!raw || typeof raw !== "string") return fallback;
+  const t = raw.trim();
+  if (!t.startsWith("/") || t.startsWith("//")) return fallback;
+  return t;
+}
+
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  const callbackUrl = sanitizeInternalPath(searchParams.get("callbackUrl"));
   const resetSuccess = searchParams.get("reset") === "success";
   const emailVerified = searchParams.get("verified") === "1";
   const [email, setEmail] = useState("");
@@ -59,8 +66,8 @@ export function LoginForm() {
         );
         return;
       }
-      router.push(callbackUrl);
-      router.refresh();
+      // Full navigation so the session cookie and middleware run reliably (fixes "nothing happens" after sign-in on some prod setups).
+      window.location.assign(callbackUrl);
     } catch {
       setError(
         "Sign-in failed unexpectedly (often a browser extension or a bad response from the server). Refresh and try again."

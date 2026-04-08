@@ -52,6 +52,7 @@ export async function POST(req: Request) {
         email,
         hashedPassword,
         emailVerified: null,
+        requiresEmailVerification: true,
         subscription: {
           create: {
             stripeCustomerId: `pending_${randomUUID()}`,

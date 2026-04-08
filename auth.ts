@@ -8,6 +8,17 @@ import { prisma } from "@/lib/db";
 import { verifyTurnstileToken } from "@/lib/verify-turnstile";
 import { getClientIpFromHeaders } from "@/lib/client-ip";
 
+/** JWT millis: 0 = must complete email verification flow. */
+function emailVerifiedAtForJwt(dbUser: {
+  emailVerified: Date | null;
+  requiresEmailVerification: boolean;
+}): number {
+  if (dbUser.requiresEmailVerification && !dbUser.emailVerified) return 0;
+  if (dbUser.emailVerified) return dbUser.emailVerified.getTime();
+  // Legacy password accounts (flag false) or OAuth without a stored date — treat as verified for access.
+  return Date.now();
+}
+
 /** Distinct code so the login form can show a captcha message (not "wrong password"). */
 class CaptchaSignin extends CredentialsSignin {
   constructor() {
@@ -86,11 +97,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (user.email) token.email = user.email;
         const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
-          select: { emailVerified: true },
+          select: { emailVerified: true, requiresEmailVerification: true },
         });
-        token.emailVerifiedAt = dbUser?.emailVerified
-          ? dbUser.emailVerified.getTime()
-          : 0;
+        token.emailVerifiedAt = dbUser
+          ? emailVerifiedAtForJwt(dbUser)
+          : Date.now();
+      } else if (token.sub && (token.emailVerifiedAt as number) === 0) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { emailVerified: true, requiresEmailVerification: true },
+        });
+        if (dbUser) {
+          token.emailVerifiedAt = emailVerifiedAtForJwt(dbUser);
+        }
       }
       return token;
     },
