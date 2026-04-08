@@ -18,28 +18,40 @@ export async function middleware(request: NextRequest) {
 
   if (method === "POST") {
     let blocked: Response | null = null;
-    if (path === "/api/auth/register") {
-      blocked = await rateLimitOr429(registerLimiter, `reg:${ip}`);
-    } else if (path === "/api/auth/forgot-password") {
-      blocked = await rateLimitOr429(forgotPasswordLimiter, `fp:${ip}`);
-    } else if (path === "/api/auth/resend-verification") {
-      blocked = await rateLimitOr429(
-        resendVerificationLimiter,
-        `resend:${ip}`
-      );
-    } else if (
-      path === "/api/auth/callback/credentials" ||
-      path === "/api/auth/signin/credentials"
-    ) {
-      blocked = await rateLimitOr429(loginLimiter, `login:${ip}`);
+    try {
+      if (path === "/api/auth/register") {
+        blocked = await rateLimitOr429(registerLimiter, `reg:${ip}`);
+      } else if (path === "/api/auth/forgot-password") {
+        blocked = await rateLimitOr429(forgotPasswordLimiter, `fp:${ip}`);
+      } else if (path === "/api/auth/resend-verification") {
+        blocked = await rateLimitOr429(
+          resendVerificationLimiter,
+          `resend:${ip}`
+        );
+      } else if (
+        path === "/api/auth/callback/credentials" ||
+        path === "/api/auth/signin/credentials"
+      ) {
+        blocked = await rateLimitOr429(loginLimiter, `login:${ip}`);
+      }
+    } catch (e) {
+      console.error("[middleware] rate limit error", e);
     }
     if (blocked) return blocked;
   }
 
-  const token = await getToken({
-    req: request,
-    secret,
-  });
+  let token: Awaited<ReturnType<typeof getToken>> = null;
+  if (secret) {
+    try {
+      token = await getToken({ req: request, secret });
+    } catch (e) {
+      console.error("[middleware] getToken error", e);
+    }
+  } else {
+    console.error(
+      "[middleware] AUTH_SECRET or NEXTAUTH_SECRET is missing — set it in Vercel env (middleware cannot read session)."
+    );
+  }
 
   if (
     (path.startsWith("/dashboard") || path.startsWith("/account")) &&

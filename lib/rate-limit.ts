@@ -41,7 +41,16 @@ export async function rateLimitOr429(
     }
     return null;
   }
-  const { success, reset } = await limiter.limit(key);
+  let success: boolean;
+  let reset: number;
+  try {
+    const out = await limiter.limit(key);
+    success = out.success;
+    reset = out.reset;
+  } catch (e) {
+    console.error("[security] Upstash rate limit request failed", e);
+    return null;
+  }
   if (success) return null;
   const retryAfter = Math.max(1, Math.ceil((reset - Date.now()) / 1000));
   return new Response(
