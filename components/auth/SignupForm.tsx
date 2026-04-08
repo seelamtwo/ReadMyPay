@@ -93,9 +93,13 @@ export function SignupForm() {
         setError(formatRegisterError(data));
         return;
       }
-      router.push(
-        `/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`
-      );
+      const q = new URLSearchParams({
+        email: email.trim().toLowerCase(),
+      });
+      if (data.resendSandboxSender === true) {
+        q.set("resendSandbox", "1");
+      }
+      router.push(`/verify-email?${q.toString()}`);
     } catch {
       setError("Something went wrong.");
     } finally {
