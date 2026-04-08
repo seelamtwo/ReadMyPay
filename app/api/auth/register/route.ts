@@ -85,18 +85,15 @@ export async function POST(req: Request) {
         return NextResponse.json(
           {
             error:
-              "Email is not configured. Set RESEND_API_KEY (Resend), or use development mode.",
+              "Email is not configured. Set RESEND_API_KEY in .env.local or Vercel. For local-only testing without sending mail, set READMY_PAY_DEV_SKIP_EMAIL=true (see .env.example).",
           },
           { status: 503 }
         );
       }
-      const debug =
-        process.env.READ_MY_PAY_DEBUG_EMAIL?.trim() === "true" ||
-        process.env.READ_MY_PAY_DEBUG_EMAIL?.trim() === "1";
       return NextResponse.json(
         {
           error: "Could not send verification email. Try again later.",
-          ...(debug && sent.message ? { detail: sent.message } : {}),
+          ...(sent.message ? { detail: sent.message } : {}),
         },
         { status: 502 }
       );

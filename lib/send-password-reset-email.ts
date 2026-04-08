@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { getAppBaseUrl } from "@/lib/app-base-url";
 import { TRANSACTIONAL_EMAIL_FROM } from "@/lib/transactional-email-from";
+import { formatResendError } from "@/lib/resend-errors";
 
 const RESET_PATH = "/reset-password";
 
@@ -77,7 +78,7 @@ export async function sendPasswordResetEmail(
       text: `Reset your Read My Pay password: ${resetUrl}\n\nThis link expires in one hour.`,
     });
     if (error) {
-      const detail = [error.name, error.message].filter(Boolean).join(": ");
+      const detail = formatResendError(error);
       console.error("[send-password-reset-email] Resend:", detail);
       return {
         ok: false,

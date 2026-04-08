@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import { getAppBaseUrl } from "@/lib/app-base-url";
 import { isResendSandboxSender } from "@/lib/resend-sender";
 import { TRANSACTIONAL_EMAIL_FROM } from "@/lib/transactional-email-from";
+import { formatResendError } from "@/lib/resend-errors";
 
 const VERIFY_PATH = "/api/auth/verify-email";
 
@@ -32,9 +33,12 @@ export async function sendEmailVerification(
   if (!apiKey) {
     if (process.env.NODE_ENV === "development") {
       console.warn(
-        `[Read My Pay] Email verification (Resend not configured). Link for ${to}:\n${verifyUrl}`
+        `[Read My Pay] Verification link (no RESEND_API_KEY — email was NOT sent) for ${to}:\n${verifyUrl}`
       );
-      return { ok: true };
+      const skip = process.env.READMY_PAY_DEV_SKIP_EMAIL?.trim().toLowerCase();
+      if (skip === "true" || skip === "1") {
+        return { ok: true };
+      }
     }
     return { ok: false, code: "not_configured" };
   }
@@ -53,16 +57,13 @@ export async function sendEmailVerification(
       text: `Verify your email: ${verifyUrl}\n\nExpires in 24 hours.`,
     });
     if (error) {
-      console.error(
-        "[send-verification-email] Resend error:",
-        error.message,
-        error.name ?? ""
-      );
+      const detail = formatResendError(error);
+      console.error("[send-verification-email] Resend error:", detail);
       console.error("[send-verification-email] Verify URL (for manual test):", verifyUrl);
       return {
         ok: false,
         code: "send_failed",
-        message: error.message,
+        message: detail,
       };
     }
     if (isResendSandboxSender(from)) {
@@ -70,10 +71,11 @@ export async function sendEmailVerification(
         "[send-verification-email] From address uses @resend.dev; signups at other addresses may not receive mail. Use lib/transactional-email-from.ts with a verified domain address."
       );
     }
+    console.info(
+      `[Read My Pay] Resend accepted verification email to=${to} id=${(data as { id?: string })?.id ?? "?"} — if the inbox is empty, open Resend → Emails / Logs for delivery status.`
+    );
     if (shouldLogVerificationLinkToConsole()) {
-      console.warn(
-        `[Read My Pay] Verification email accepted by Resend for ${to}. id=${data?.id ?? "?"}\nLink:\n${verifyUrl}`
-      );
+      console.warn(`[Read My Pay] Verification link:\n${verifyUrl}`);
     }
     return { ok: true };
   } catch (e) {
