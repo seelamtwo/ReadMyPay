@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -19,12 +19,48 @@ import {
   isTurnstileRequiredClient,
 } from "@/components/security/TurnstileField";
 
+const POST_LOGIN_FALLBACK = "/dashboard";
+
+/** Paths that must never be post-login redirects (would reload sign-in with empty fields). */
+const AUTH_FLOW_PATH_PREFIXES = [
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+] as const;
+
+function isAuthFlowPath(pathname: string): boolean {
+  const p = pathname.split("?")[0] ?? pathname;
+  return AUTH_FLOW_PATH_PREFIXES.some(
+    (prefix) => p === prefix || p.startsWith(`${prefix}/`)
+  );
+}
+
 function sanitizeInternalPath(raw: string | null): string {
-  const fallback = "/dashboard";
-  if (!raw || typeof raw !== "string") return fallback;
+  if (!raw || typeof raw !== "string") return POST_LOGIN_FALLBACK;
   const t = raw.trim();
-  if (!t.startsWith("/") || t.startsWith("//")) return fallback;
+  if (!t.startsWith("/") || t.startsWith("//")) return POST_LOGIN_FALLBACK;
+  const pathOnly = t.split("?")[0] ?? t;
+  if (isAuthFlowPath(pathOnly)) return POST_LOGIN_FALLBACK;
   return t;
+}
+
+/** After successful signIn, prefer server `url` but never send users back to auth pages. */
+function resolvePostLoginHref(
+  res: { ok: boolean; url: string | null },
+  fallback: string
+): string {
+  if (!res.ok || !res.url) return fallback;
+  try {
+    const u = new URL(res.url);
+    if (u.origin !== window.location.origin) return fallback;
+    const pathOnly = u.pathname;
+    if (isAuthFlowPath(pathOnly)) return fallback;
+    return u.pathname + u.search;
+  } catch {
+    return fallback;
+  }
 }
 
 export function LoginForm() {
@@ -41,6 +77,27 @@ export function LoginForm() {
   const showGoogle =
     process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
 
+  useEffect(() => {
+    const err = searchParams.get("error");
+    const code = searchParams.get("code");
+    if (!err) return;
+    if (err === "CredentialsSignin") {
+      setError(
+        code === "captcha"
+          ? "Security check failed. Refresh the page, complete the captcha again, and try signing in."
+          : "Invalid email or password."
+      );
+      return;
+    }
+    if (err === "Configuration") {
+      setError(
+        "Sign-in is misconfigured. If this persists, contact support."
+      );
+      return;
+    }
+    setError("Could not sign in. Try again.");
+  }, [searchParams]);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -51,6 +108,8 @@ export function LoginForm() {
         password,
         turnstileToken,
         redirect: false,
+        // Server default is window.location (this page); set so success JSON `url` is not /login.
+        redirectTo: callbackUrl,
       });
       if (res === undefined) {
         setError(
@@ -66,8 +125,15 @@ export function LoginForm() {
         );
         return;
       }
-      // Full navigation so the session cookie and middleware run reliably (fixes "nothing happens" after sign-in on some prod setups).
-      window.location.assign(callbackUrl);
+      if (!res.ok) {
+        setError(
+          "Sign-in did not complete. Check your connection and try again."
+        );
+        return;
+      }
+      // Full navigation so the session cookie and middleware run reliably.
+      const href = resolvePostLoginHref(res, callbackUrl);
+      window.location.assign(href);
     } catch {
       setError(
         "Sign-in failed unexpectedly (often a browser extension or a bad response from the server). Refresh and try again."
