@@ -18,33 +18,9 @@ import {
   TurnstileField,
   isTurnstileRequiredClient,
 } from "@/components/security/TurnstileField";
+import { isAuthFlowPath, safePostLoginPath } from "@/lib/safe-post-login-path";
 
 const POST_LOGIN_FALLBACK = "/dashboard";
-
-/** Paths that must never be post-login redirects (would reload sign-in with empty fields). */
-const AUTH_FLOW_PATH_PREFIXES = [
-  "/login",
-  "/signup",
-  "/forgot-password",
-  "/reset-password",
-  "/verify-email",
-] as const;
-
-function isAuthFlowPath(pathname: string): boolean {
-  const p = pathname.split("?")[0] ?? pathname;
-  return AUTH_FLOW_PATH_PREFIXES.some(
-    (prefix) => p === prefix || p.startsWith(`${prefix}/`)
-  );
-}
-
-function sanitizeInternalPath(raw: string | null): string {
-  if (!raw || typeof raw !== "string") return POST_LOGIN_FALLBACK;
-  const t = raw.trim();
-  if (!t.startsWith("/") || t.startsWith("//")) return POST_LOGIN_FALLBACK;
-  const pathOnly = t.split("?")[0] ?? t;
-  if (isAuthFlowPath(pathOnly)) return POST_LOGIN_FALLBACK;
-  return t;
-}
 
 /** After successful signIn, prefer server `url` but never send users back to auth pages. */
 function resolvePostLoginHref(
@@ -65,7 +41,10 @@ function resolvePostLoginHref(
 
 export function LoginForm() {
   const searchParams = useSearchParams();
-  const callbackUrl = sanitizeInternalPath(searchParams.get("callbackUrl"));
+  const callbackUrl = safePostLoginPath(
+    searchParams.get("callbackUrl"),
+    POST_LOGIN_FALLBACK
+  );
   const resetSuccess = searchParams.get("reset") === "success";
   const emailVerified = searchParams.get("verified") === "1";
   const [email, setEmail] = useState("");

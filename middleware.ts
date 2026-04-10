@@ -9,6 +9,7 @@ import {
   rateLimitOr429,
   getClientIpFromHeaders,
 } from "@/lib/rate-limit";
+import { safePostLoginPath } from "@/lib/safe-post-login-path";
 
 /**
  * Must match Auth.js cookie names: on HTTPS the session cookie is
@@ -71,6 +72,26 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  if (path === "/login" || path === "/signup") {
+    if (token) {
+      const verifiedAt = token.emailVerifiedAt as number | undefined;
+      if (verifiedAt === 0) {
+        const url = new URL("/verify-email", request.url);
+        url.searchParams.set("pending", "1");
+        const email = token.email as string | undefined;
+        if (email) url.searchParams.set("email", email);
+        return NextResponse.redirect(url);
+      }
+      if (path === "/signup") {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+      }
+      const rawCallback = request.nextUrl.searchParams.get("callbackUrl");
+      const dest = safePostLoginPath(rawCallback, "/dashboard");
+      return NextResponse.redirect(new URL(dest, request.url));
+    }
+    return NextResponse.next();
+  }
+
   if (
     (path.startsWith("/dashboard") ||
       path.startsWith("/account") ||
@@ -103,6 +124,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/login",
+    "/signup",
     "/dashboard/:path*",
     "/account/:path*",
     "/admin/:path*",

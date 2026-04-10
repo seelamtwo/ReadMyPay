@@ -2,20 +2,9 @@
 
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
-import type { Session } from "next-auth";
 import { Button } from "@/components/ui/button";
 import { AdminNavLink } from "@/components/layout/AdminNavLink";
-
-/**
- * `useSession().status === "authenticated"` is true for any truthy session object.
- * Malformed/partial session payloads can omit a real user — still show Log in, not Sign out.
- */
-function hasAuthenticatedUser(session: Session | null | undefined): boolean {
-  const id = session?.user?.id;
-  if (typeof id === "string" && id.trim().length > 0) return true;
-  const email = session?.user?.email;
-  return typeof email === "string" && email.trim().length > 0;
-}
+import { hasAuthenticatedUser } from "@/lib/session-guards";
 
 /**
  * Client session only — avoids showing "Sign out" from a stale/wrong SSR session

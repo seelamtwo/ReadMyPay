@@ -1,10 +1,12 @@
-import Link from "next/link";
-import { ArrowRight, FileText, Lock, Sparkles } from "lucide-react";
+import { FileText, Lock, Sparkles } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { TrustBanner } from "@/components/trust/TrustBanner";
 import { PrivacyTable } from "@/components/trust/PrivacyTable";
-import { Button } from "@/components/ui/button";
+import {
+  HomeHeroCtas,
+  HomePricingCta,
+} from "@/components/home/HomeCtaButtons";
 
 export const metadata = {
   title: "Read My Pay — Plain-English financial documents",
@@ -30,18 +32,7 @@ export default async function HomePage() {
               jargon-free walkthrough—plus practical savings tips. Your file is
               never stored on our servers.
             </p>
-            <div className="mt-10 flex flex-wrap gap-4">
-              <Link href="/signup">
-                <Button size="lg" className="gap-2">
-                  Get started <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/login">
-                <Button variant="outline" size="lg">
-                  Log in
-                </Button>
-              </Link>
-            </div>
+            <HomeHeroCtas />
             <div className="mt-10 max-w-2xl">
               <TrustBanner />
             </div>
@@ -130,9 +121,7 @@ export default async function HomePage() {
               </div>
             ))}
           </div>
-          <Link href="/signup" className="mt-10 inline-block">
-            <Button size="lg">Create free account</Button>
-          </Link>
+          <HomePricingCta />
         </section>
       </main>
       <Footer />
