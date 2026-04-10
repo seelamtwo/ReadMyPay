@@ -1,30 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 
+/**
+ * Legacy verification URL from older emails. Redirects to the canonical
+ * `/verify-email/confirm` route so links are not under `/api/`.
+ */
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token")?.trim();
   const origin = req.nextUrl.origin;
-
   if (!token) {
     return NextResponse.redirect(new URL("/verify-email?error=missing", origin));
   }
-
-  const row = await prisma.verificationToken.findUnique({
-    where: { token },
-  });
-
-  if (!row || row.expires < new Date()) {
-    return NextResponse.redirect(new URL("/verify-email?error=expired", origin));
-  }
-
-  const email = row.identifier.trim().toLowerCase();
-
-  await prisma.user.updateMany({
-    where: { email },
-    data: { emailVerified: new Date() },
-  });
-
-  await prisma.verificationToken.delete({ where: { token } });
-
-  return NextResponse.redirect(new URL("/login?verified=1", origin));
+  const url = new URL("/verify-email/confirm", origin);
+  url.searchParams.set("token", token);
+  return NextResponse.redirect(url, 307);
 }

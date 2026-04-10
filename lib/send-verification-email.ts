@@ -4,7 +4,8 @@ import { isResendSandboxSender } from "@/lib/resend-sender";
 import { TRANSACTIONAL_EMAIL_FROM } from "@/lib/transactional-email-from";
 import { formatResendError } from "@/lib/resend-errors";
 
-const VERIFY_PATH = "/api/auth/verify-email";
+/** User-facing path — avoid /api/... in email links (often flagged as phishing). */
+const VERIFY_PATH = "/verify-email/confirm";
 
 export function buildEmailVerificationUrl(token: string): string {
   const base = getAppBaseUrl();
