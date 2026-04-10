@@ -10,6 +10,20 @@ import {
   getClientIpFromHeaders,
 } from "@/lib/rate-limit";
 
+/**
+ * Must match Auth.js cookie names: on HTTPS the session cookie is
+ * `__Secure-authjs.session-token`; getToken() defaults to secureCookie:false
+ * and would only read `authjs.session-token` — so production looked logged-out
+ * after every sign-in while localhost (http) worked.
+ */
+function secureCookieForRequest(request: NextRequest): boolean {
+  const forwarded = request.headers.get("x-forwarded-proto");
+  if (forwarded) {
+    return forwarded.split(",")[0]?.trim() === "https";
+  }
+  return request.nextUrl.protocol === "https:";
+}
+
 export async function middleware(request: NextRequest) {
   const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   const path = request.nextUrl.pathname;
@@ -43,7 +57,11 @@ export async function middleware(request: NextRequest) {
   let token: Awaited<ReturnType<typeof getToken>> = null;
   if (secret) {
     try {
-      token = await getToken({ req: request, secret });
+      token = await getToken({
+        req: request,
+        secret,
+        secureCookie: secureCookieForRequest(request),
+      });
     } catch (e) {
       console.error("[middleware] getToken error", e);
     }
