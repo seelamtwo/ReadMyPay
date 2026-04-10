@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { signOut } from "next-auth/react";
-import type { Session } from "next-auth";
+import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 
-export function NavbarClient({ session }: { session: Session | null }) {
+/**
+ * Client session only — avoids showing "Sign out" from a stale/wrong SSR session
+ * (e.g. cached HTML) before the browser session is known.
+ */
+export function NavbarClient() {
+  const { data: session, status } = useSession();
+
   return (
     <nav className="flex items-center gap-3">
       <Link
@@ -14,7 +19,16 @@ export function NavbarClient({ session }: { session: Session | null }) {
       >
         Privacy
       </Link>
-      {session?.user ? (
+      {status === "loading" ? (
+        <div
+          className="flex items-center gap-2"
+          aria-busy="true"
+          aria-label="Loading account menu"
+        >
+          <div className="h-8 w-20 animate-pulse rounded-md bg-slate-200/90" />
+          <div className="h-8 w-16 animate-pulse rounded-md bg-slate-200/90" />
+        </div>
+      ) : session?.user ? (
         <>
           <Link href="/dashboard">
             <Button variant="ghost" size="sm">
