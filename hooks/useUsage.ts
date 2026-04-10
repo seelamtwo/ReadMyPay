@@ -6,6 +6,13 @@ export type UsageState = {
   tier: string;
   used: number;
   limit: number | null;
+  /** Documents still available this month (free + prepaid on Free; monthly cap on Monthly plan). */
+  remaining?: number;
+  prepaidCredits?: number;
+  freeMonthlyLimit?: number;
+  personalMonthlyLimit?: number;
+  /** Present when /api/usage succeeds. */
+  canUse?: boolean;
 };
 
 export function useUsage() {
@@ -13,23 +20,33 @@ export function useUsage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent ?? false;
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/usage", { credentials: "include" });
       if (!res.ok) {
-        setError("Could not load usage");
+        let msg = "Could not load usage";
+        try {
+          const err = (await res.json()) as { error?: string };
+          if (typeof err?.error === "string" && err.error.trim()) {
+            msg = err.error.trim();
+          }
+        } catch {
+          /* ignore */
+        }
+        setError(msg);
         setUsage(null);
         return;
       }
-      const data = await res.json();
+      const data = (await res.json()) as UsageState;
       setUsage(data);
     } catch {
       setError("Could not load usage");
       setUsage(null);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 

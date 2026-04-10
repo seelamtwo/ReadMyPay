@@ -8,7 +8,10 @@ export function Footer() {
           © {new Date().getFullYear()} Read My Pay. General information only—not
           financial advice.
         </p>
-        <div className="flex gap-6 text-sm">
+        <div className="flex flex-wrap gap-6 text-sm">
+          <Link href="/contact" className="text-slate-600 hover:text-slate-900">
+            Contact
+          </Link>
           <Link href="/privacy" className="text-slate-600 hover:text-slate-900">
             Privacy
           </Link>

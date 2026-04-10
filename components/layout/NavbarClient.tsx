@@ -4,6 +4,7 @@ import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import type { Session } from "next-auth";
 import { Button } from "@/components/ui/button";
+import { AdminNavLink } from "@/components/layout/AdminNavLink";
 
 /**
  * `useSession().status === "authenticated"` is true for any truthy session object.
@@ -39,6 +40,8 @@ export function NavbarClient() {
           aria-busy="true"
           aria-label="Loading account menu"
         >
+          <div className="h-8 w-24 animate-pulse rounded-md bg-slate-200/90" />
+          <div className="h-8 w-20 animate-pulse rounded-md bg-slate-200/90" />
           <div className="h-8 w-20 animate-pulse rounded-md bg-slate-200/90" />
           <div className="h-8 w-16 animate-pulse rounded-md bg-slate-200/90" />
         </div>
@@ -54,6 +57,12 @@ export function NavbarClient() {
               Account
             </Button>
           </Link>
+          <Link href="/account/support">
+            <Button variant="ghost" size="sm">
+              Support
+            </Button>
+          </Link>
+          <AdminNavLink />
           <Button
             variant="outline"
             size="sm"

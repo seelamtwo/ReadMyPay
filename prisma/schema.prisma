@@ -23,6 +23,7 @@ model User {
   accounts             Account[]
   sessions             Session[]
   passwordResetTokens  PasswordResetToken[]
+  documentUsageLogs    DocumentUsageLog[]
 }
 
 model PasswordResetToken {
@@ -45,9 +46,53 @@ model Subscription {
   stripePriceId        String?
   tier                 Tier     @default(FREE)
   docsUsedThisMonth    Int      @default(0)
+  /// One-off $0.99 purchases; consumed after the free monthly doc on FREE tier.
+  prepaidDocCredits    Int      @default(0)
   billingPeriodStart   DateTime @default(now())
+  /// Set when the user cancels in-app (cancel at period end). Cleared if they resume via Stripe.
+  cancelAtPeriodEndAt DateTime?
+  cancelReasonCategory  String?  @db.VarChar(64)
+  cancelReasonDetail    String?  @db.Text
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+}
+
+/// Idempotent record so prepaid credit is applied once per Checkout Session (webhook + client sync).
+model StripePrepaidFulfillment {
+  checkoutSessionId String   @id
+  userId            String
+  createdAt         DateTime @default(now())
+}
+
+/// One row per billable document processed (explain or spending summary).
+model DocumentUsageLog {
+  id           String            @id @default(cuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentName String            @db.VarChar(512)
+  flow         DocumentUsageFlow
+  createdAt    DateTime          @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+enum DocumentUsageFlow {
+  EXPLAIN
+  SPENDING
+}
+
+/// Admin-only mutations (refunds, usage); inspect for compliance.
+model AdminAuditLog {
+  id             String   @id @default(cuid())
+  adminUserId    String
+  targetUserId   String?
+  action         String   @db.VarChar(64)
+  payload        Json
+  stripeRefundId String?  @db.VarChar(128)
+  createdAt      DateTime @default(now())
+
+  @@index([adminUserId, createdAt(sort: Desc)])
+  @@index([targetUserId])
 }
 
 model Account {

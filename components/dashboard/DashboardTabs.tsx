@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { UploadZone } from "@/components/upload/UploadZone";
 import { SpendingUploadZone } from "@/components/spending/SpendingUploadZone";
 import { TrustBanner } from "@/components/trust/TrustBanner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardUsageProvider } from "@/components/dashboard/DashboardUsageProvider";
 import { UsageBadge } from "@/components/dashboard/UsageBadge";
 import { cn } from "@/lib/utils";
 
@@ -12,8 +14,41 @@ type Tab = "explain" | "spending";
 
 export function DashboardTabs() {
   const [tab, setTab] = useState<Tab>("explain");
+  const [resumeExplain, setResumeExplain] = useState(0);
+  const [resumeSpend, setResumeSpend] = useState(0);
+  const [stripeCheckoutSessionId, setStripeCheckoutSessionId] = useState<
+    string | null
+  >(null);
+  const clearStripeCheckoutSessionId = useCallback(
+    () => setStripeCheckoutSessionId(null),
+    []
+  );
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t === "explain" || t === "spending") {
+      setTab(t);
+    }
+    const resume = searchParams.get("resume") === "1";
+    const paid = searchParams.get("paid") === "1";
+    const sid = searchParams.get("session_id");
+    if (resume && paid && sid) {
+      setStripeCheckoutSessionId(sid);
+    }
+    if (resume && paid) {
+      if (t === "spending") {
+        setResumeSpend((n) => n + 1);
+      } else {
+        setResumeExplain((n) => n + 1);
+      }
+      router.replace("/dashboard", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   return (
+    <DashboardUsageProvider>
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -65,7 +100,11 @@ export function DashboardTabs() {
             <p className="mb-4 text-sm text-slate-600">
               One file at a time — plain-English explanation with tips.
             </p>
-            <UploadZone />
+            <UploadZone
+              resumeNonce={resumeExplain}
+              stripeCheckoutSessionId={stripeCheckoutSessionId}
+              onStripeResumeConsumed={clearStripeCheckoutSessionId}
+            />
           </CardContent>
         </Card>
       ) : (
@@ -79,10 +118,15 @@ export function DashboardTabs() {
               group spending by category, and show totals plus a pie chart. Each
               analysis counts as one document toward your monthly limit.
             </p>
-            <SpendingUploadZone />
+            <SpendingUploadZone
+              resumeNonce={resumeSpend}
+              stripeCheckoutSessionId={stripeCheckoutSessionId}
+              onStripeResumeConsumed={clearStripeCheckoutSessionId}
+            />
           </CardContent>
         </Card>
       )}
     </div>
+    </DashboardUsageProvider>
   );
 }

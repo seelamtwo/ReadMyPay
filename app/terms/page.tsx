@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { SUPPORT_EMAIL } from "@/lib/support-contact";
 
 export const metadata = {
   title: "Terms of Service",
@@ -18,7 +19,7 @@ export default function TermsPage() {
         <h1 className="mt-6 text-3xl font-bold text-slate-900">
           Terms of service
         </h1>
-        <p className="mt-4 text-sm text-slate-500">Last updated April 2, 2026</p>
+        <p className="mt-4 text-sm text-slate-500">Last updated April 7, 2026</p>
         <div className="prose prose-slate mt-8 max-w-none text-slate-700">
           <h2>Not financial advice</h2>
           <p>
@@ -32,10 +33,28 @@ export default function TermsPage() {
             data, or upload unlawful content. We may suspend accounts that
             violate these terms.
           </p>
-          <h2>Subscriptions</h2>
+          <h2>Subscriptions &amp; pricing</h2>
           <p>
-            Paid plans are billed through Stripe subject to Stripe&apos;s terms.
-            Cancellations and refunds follow the policies shown at checkout.
+            Paid plans and one-time document purchases are processed by Stripe
+            and are subject to Stripe&apos;s terms. Pricing (including monthly and
+            per-document rates) is shown on the site and at checkout.
+          </p>
+          <p>
+            If you cancel a subscription, you will not be charged for future
+            billing cycles. Your paid access continues until the end of the
+            subscription period you have already paid for.
+          </p>
+          <h2 id="refunds">Refund policy</h2>
+          <p>
+            Payments for the current subscription period or for completed
+            one-time document purchases are generally <strong>non-refundable</strong>.
+            We do not provide refunds for partial subscription periods or for
+            unused prepaid document credits, except where required by law.
+          </p>
+          <p>
+            If you believe a charge was made in error, contact{" "}
+            <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> and we will
+            review your case.
           </p>
           <h2>Disclaimer</h2>
           <p>

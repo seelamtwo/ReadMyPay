@@ -1,12 +1,24 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import OpenAI from "openai";
-import { isDocsUsageLimitDisabled, isOverLimit } from "@/lib/usage";
+import {
+  canProcessDocument,
+  isDocsUsageLimitDisabled,
+  planLimitExceededMessage,
+} from "@/lib/usage";
+import { incrementSubscriptionDocUsage } from "@/lib/document-usage";
+import { DocumentUsageFlow } from "@prisma/client";
 import { rejectIfEmailNotVerified } from "@/lib/require-email-verified";
 
 /** Node runtime: Prisma is not available on the Edge runtime without Accelerate. */
 export const runtime = "nodejs";
+
+/**
+ * Plain-text extraction limit (characters), not file bytes. A small PDF can
+ * expand to a large amount of text when extracted.
+ */
+const MAX_EXTRACTED_TEXT_CHARS = 120_000;
 
 const SYSTEM_PROMPT = `You are a friendly financial literacy assistant. 
 Your job is to explain financial documents in plain English to people who are not financial experts.
@@ -61,6 +73,12 @@ export async function POST(req: NextRequest) {
   const documentType =
     (body as { documentType?: string }).documentType ?? "financial document";
   const isImage = Boolean((body as { isImage?: boolean }).isImage);
+  const fileNameRaw = (body as { fileName?: unknown }).fileName;
+  const fileName =
+    typeof fileNameRaw === "string" ? fileNameRaw.trim().slice(0, 512) : "";
+  const usageDocumentLabel =
+    fileName ||
+    (documentType.length > 0 ? documentType.slice(0, 200) : "Document");
 
   const visionMulti = imageUrls.length > 0;
   const visionSingle =
@@ -84,8 +102,11 @@ export async function POST(req: NextRequest) {
         status: 400,
       });
     }
-    if (extractedText.length > 15000) {
-      return new Response("Document too large", { status: 413 });
+    if (extractedText.length > MAX_EXTRACTED_TEXT_CHARS) {
+      return new Response(
+        `Extracted text is too long (${extractedText.length.toLocaleString()} characters; max ${MAX_EXTRACTED_TEXT_CHARS.toLocaleString()}). Try fewer pages, a shorter document, or contact support if you need a higher limit.`,
+        { status: 413 }
+      );
     }
   }
 
@@ -94,27 +115,30 @@ export async function POST(req: NextRequest) {
       where: { userId: session.user.id },
     });
 
-    const tier = subscription?.tier;
-    const used = subscription?.docsUsedThisMonth ?? 0;
-
     const skipUsageLimit = isDocsUsageLimitDisabled();
 
-    if (!skipUsageLimit && isOverLimit(tier, used)) {
-      return new Response(
-        "Read My Pay plan limit: free tier allows 2 documents per month in this app (not your ChatGPT subscription). See /account for usage. For local testing add READMY_PAY_DISABLE_USAGE_LIMIT=true to .env.local (or legacy FINCLEAR_DISABLE_USAGE_LIMIT), or in Supabase SQL run: UPDATE \"Subscription\" SET \"docsUsedThisMonth\" = 0;",
+    if (
+      !skipUsageLimit &&
+      !canProcessDocument(
+        subscription
+          ? {
+              tier: subscription.tier,
+              docsUsedThisMonth: subscription.docsUsedThisMonth,
+              prepaidDocCredits: subscription.prepaidDocCredits,
+            }
+          : null
+      )
+    ) {
+      return NextResponse.json(
+        {
+          code: "USAGE_LIMIT",
+          error: planLimitExceededMessage(),
+        },
         { status: 429 }
       );
     }
 
-    await prisma.subscription.upsert({
-      where: { userId: session.user.id },
-      update: { docsUsedThisMonth: { increment: 1 } },
-      create: {
-        userId: session.user.id,
-        stripeCustomerId: `pending_${session.user.id}`,
-        docsUsedThisMonth: 1,
-      },
-    });
+    const userId = session.user.id;
 
     const openai = getOpenAI();
 
@@ -162,11 +186,20 @@ export async function POST(req: NextRequest) {
               const text = chunk.choices[0]?.delta?.content ?? "";
               if (text) controller.enqueue(new TextEncoder().encode(text));
             }
+            if (!skipUsageLimit) {
+              try {
+                await incrementSubscriptionDocUsage(userId, {
+                  documentName: usageDocumentLabel,
+                  flow: DocumentUsageFlow.EXPLAIN,
+                });
+              } catch (e) {
+                console.error("[explain] usage increment failed", e);
+              }
+            }
+            controller.close();
           } catch (e) {
             controller.error(e);
-            return;
           }
-          controller.close();
         },
       }),
       {

@@ -4,12 +4,61 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubscriptionActions } from "@/components/account/SubscriptionActions";
-import { docLimitForTier } from "@/lib/usage";
+import {
+  documentsAvailableRemaining,
+  docLimitForTier,
+  FREE_MONTHLY_DOC_LIMIT,
+  PERSONAL_MONTHLY_DOC_LIMIT,
+} from "@/lib/usage";
+import {
+  PRICE_MONTHLY_DISPLAY,
+  PRICE_PER_DOCUMENT_DISPLAY,
+} from "@/lib/pricing";
+import { getStripeSubscriptionSummary } from "@/lib/stripe-subscription-summary";
+import type { DocumentUsageFlow } from "@prisma/client";
+
+function flowLabel(flow: DocumentUsageFlow): string {
+  switch (flow) {
+    case "EXPLAIN":
+      return "Explain document";
+    case "SPENDING":
+      return "Spending summary";
+    default:
+      return flow;
+  }
+}
+
+function formatProcessedAtUtc(d: Date): string {
+  return `${d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
+  })}`;
+}
 
 export const metadata = {
   title: "Account",
   description: "Subscription and usage",
 };
+
+/** Personalized; avoid stale RSC cache after in-app cancel / Stripe updates. */
+export const dynamic = "force-dynamic";
+
+function formatFriendlyLocalDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
 
 export default async function AccountPage({
   searchParams,
@@ -25,11 +74,43 @@ export default async function AccountPage({
   });
 
   const tier = subscription?.tier ?? "FREE";
+  const isMonthlyPlan = tier === "PERSONAL";
   const used = subscription?.docsUsedThisMonth ?? 0;
+  const prepaid = subscription?.prepaidDocCredits ?? 0;
   const limit = docLimitForTier(tier);
+  const remaining = documentsAvailableRemaining(
+    subscription
+      ? {
+          tier: subscription.tier,
+          docsUsedThisMonth: subscription.docsUsedThisMonth,
+          prepaidDocCredits: subscription.prepaidDocCredits,
+        }
+      : null
+  );
+
+  const hasStripeCustomer = Boolean(
+    subscription?.stripeCustomerId &&
+      !subscription.stripeCustomerId.startsWith("pending_")
+  );
+
+  const subscriptionSummary =
+    isMonthlyPlan && subscription?.stripeSubscriptionId
+      ? await getStripeSubscriptionSummary(subscription.stripeSubscriptionId)
+      : null;
+
+  const monthlyRenewalCancelled =
+    isMonthlyPlan &&
+    (subscriptionSummary?.cancelAtPeriodEnd === true ||
+      Boolean(subscription?.cancelAtPeriodEndAt));
+
+  const documentUsageLogs = await prisma.documentUsageLog.findMany({
+    where: { userId: session.user.id },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  });
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+    <>
       <h1 className="text-2xl font-bold text-slate-900">Account</h1>
       <p className="mt-2 text-slate-600">
         Signed in as{" "}
@@ -38,8 +119,7 @@ export default async function AccountPage({
 
       {sp.success === "true" && (
         <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-          Thanks—your subscription was updated. It may take a moment to reflect
-          below.
+          Thanks—your payment was received. It may take a moment to show below.
         </p>
       )}
 
@@ -49,12 +129,55 @@ export default async function AccountPage({
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-slate-700">
           <p>
-            <span className="font-medium text-slate-900">Tier:</span> {tier}
+            <span className="font-medium text-slate-900">Plan:</span>{" "}
+            {isMonthlyPlan
+              ? `Monthly (${PRICE_MONTHLY_DISPLAY}/month, up to ${PERSONAL_MONTHLY_DOC_LIMIT} documents per month)`
+              : `Free (${FREE_MONTHLY_DOC_LIMIT} document per month included)`}
+          </p>
+          {monthlyRenewalCancelled && (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-950">
+              <span className="font-medium">Renewal cancelled.</span> You still
+              have Monthly plan benefits for the rest of this billing period
+              {subscriptionSummary?.currentPeriodEndIso
+                ? ` (through ${formatFriendlyLocalDate(
+                    subscriptionSummary.currentPeriodEndIso
+                  )})`
+                : ""}
+              , including your monthly document allowance above. After that your
+              plan becomes Free ({FREE_MONTHLY_DOC_LIMIT} included document per
+              month). You will not be charged again for the Monthly plan.
+            </p>
+          )}
+          <p>
+            <span className="font-medium text-slate-900">
+              Documents available this month:
+            </span>{" "}
+            {remaining > 100_000
+              ? "Unlimited (limits off in this environment)"
+              : isMonthlyPlan
+                ? `${remaining} of ${PERSONAL_MONTHLY_DOC_LIMIT}`
+                : remaining === 0
+                  ? "0"
+                  : remaining === 1 && used === 0
+                    ? "1 (your included free document)"
+                    : String(remaining)}
           </p>
           <p>
-            Documents used this month: {used}
-            {limit !== Number.MAX_SAFE_INTEGER ? ` / ${limit}` : ""}
+            <span className="font-medium text-slate-900">
+              Documents used this month:
+            </span>{" "}
+            {used}
+            {` / ${limit}`}
           </p>
+          {!isMonthlyPlan && (
+            <p>
+              <span className="font-medium text-slate-900">
+                Prepaid document credits:
+              </span>{" "}
+              {prepaid} (each credit covers one document after your free monthly
+              one; buy more at {PRICE_PER_DOCUMENT_DISPLAY} each)
+            </p>
+          )}
           <Link
             href="/dashboard"
             className="inline-block pt-2 text-emerald-700 hover:underline"
@@ -66,12 +189,71 @@ export default async function AccountPage({
 
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Monthly plan</CardTitle>
+          <CardTitle>Document usage history</CardTitle>
         </CardHeader>
         <CardContent>
-          <SubscriptionActions />
+          {documentUsageLogs.length === 0 ? (
+            <p className="text-sm text-slate-600">
+              No processed documents yet. Upload a file on the dashboard to see
+              it listed here with the date and time.
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50">
+                    <th className="px-3 py-2 font-medium text-slate-900">
+                      Date &amp; time (UTC)
+                    </th>
+                    <th className="px-3 py-2 font-medium text-slate-900">
+                      Document name
+                    </th>
+                    <th className="px-3 py-2 font-medium text-slate-900">
+                      Type
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {documentUsageLogs.map((row) => (
+                    <tr
+                      key={row.id}
+                      className="border-b border-slate-100 last:border-0"
+                    >
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-700">
+                        {formatProcessedAtUtc(row.createdAt)}
+                      </td>
+                      <td className="max-w-[280px] break-words px-3 py-2 text-slate-800">
+                        {row.documentName}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-600">
+                        {flowLabel(row.flow)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-slate-500">
+            Each row is one billable document run (newest first). Timestamps are
+            shown in UTC.
+          </p>
         </CardContent>
       </Card>
-    </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Upgrade or add documents</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SubscriptionActions
+            hasStripeCustomer={hasStripeCustomer}
+            isMonthlyPlan={isMonthlyPlan}
+            stripeSubscriptionId={subscription?.stripeSubscriptionId ?? null}
+            subscriptionSummary={subscriptionSummary}
+          />
+        </CardContent>
+      </Card>
+    </>
   );
 }

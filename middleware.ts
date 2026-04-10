@@ -72,7 +72,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (
-    (path.startsWith("/dashboard") || path.startsWith("/account")) &&
+    (path.startsWith("/dashboard") ||
+      path.startsWith("/account") ||
+      path.startsWith("/admin")) &&
     !token
   ) {
     const url = new URL("/login", request.url);
@@ -81,7 +83,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (
-    (path.startsWith("/dashboard") || path.startsWith("/account")) &&
+    (path.startsWith("/dashboard") ||
+      path.startsWith("/account") ||
+      path.startsWith("/admin")) &&
     token
   ) {
     const verifiedAt = token.emailVerifiedAt as number | undefined;
@@ -101,6 +105,7 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/account/:path*",
+    "/admin/:path*",
     "/api/auth/register",
     "/api/auth/forgot-password",
     "/api/auth/resend-verification",

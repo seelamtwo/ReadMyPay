@@ -2,6 +2,8 @@ import type Stripe from "stripe";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
+import { fulfillPrepaidDocCheckoutSession } from "@/lib/fulfill-prepaid-checkout";
+import { fulfillSubscriptionFromCheckoutSession } from "@/lib/fulfill-subscription-from-checkout";
 
 export const runtime = "nodejs";
 
@@ -34,6 +36,21 @@ export async function POST(req: NextRequest) {
 
   try {
     switch (event.type) {
+      case "checkout.session.completed": {
+        const sess = event.data.object as Stripe.Checkout.Session;
+        if (sess.mode === "payment" && sess.payment_status === "paid") {
+          if (sess.metadata?.type === "prepaid_doc" && sess.metadata?.userId) {
+            await fulfillPrepaidDocCheckoutSession(sess.id, { session: sess });
+          }
+          break;
+        }
+        if (sess.mode === "subscription" && sess.status === "complete") {
+          await fulfillSubscriptionFromCheckoutSession(sess.id, {
+            session: sess,
+          });
+        }
+        break;
+      }
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
@@ -50,6 +67,13 @@ export async function POST(req: NextRequest) {
             stripeSubscriptionId: sub.id,
             stripePriceId: priceId ?? null,
             ...(nextTier ? { tier: nextTier } : {}),
+            ...(!sub.cancel_at_period_end
+              ? {
+                  cancelAtPeriodEndAt: null,
+                  cancelReasonCategory: null,
+                  cancelReasonDetail: null,
+                }
+              : {}),
           },
         });
         break;
@@ -66,6 +90,9 @@ export async function POST(req: NextRequest) {
             tier: "FREE",
             stripeSubscriptionId: null,
             stripePriceId: null,
+            cancelAtPeriodEndAt: null,
+            cancelReasonCategory: null,
+            cancelReasonDetail: null,
           },
         });
         break;

@@ -7,6 +7,22 @@ import { rejectIfEmailNotVerified } from "@/lib/require-email-verified";
 
 export const runtime = "nodejs";
 
+type CheckoutBody = {
+  priceId?: string;
+  /** `subscription` (monthly) or `payment` (per-document credit). */
+  mode?: "subscription" | "payment";
+  /** Relative path only, e.g. `/dashboard?tab=explain&resume=1&paid=1` */
+  successPath?: string;
+  cancelPath?: string;
+};
+
+function isSafeRedirectPath(path: string): boolean {
+  if (!path.startsWith("/")) return false;
+  if (path.includes("..")) return false;
+  if (path.startsWith("//")) return false;
+  return true;
+}
+
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.email || !session.user.id) {
@@ -23,16 +39,19 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { priceId?: string };
+  let body: CheckoutBody;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { priceId } = body;
+  const { priceId, mode = "subscription", successPath, cancelPath } = body;
   if (!priceId) {
     return NextResponse.json({ error: "priceId required" }, { status: 400 });
+  }
+  if (mode !== "subscription" && mode !== "payment") {
+    return NextResponse.json({ error: "Invalid mode" }, { status: 400 });
   }
 
   try {
@@ -56,15 +75,43 @@ export async function POST(req: Request) {
       });
     }
 
-    const baseUrl = getAppBaseUrl();
+    const baseUrl = getAppBaseUrl().replace(/\/+$/, "");
+
+    const defaultSuccess = `${baseUrl}/account?success=true`;
+    const defaultCancel = `${baseUrl}/account`;
+
+    let success_url =
+      successPath && isSafeRedirectPath(successPath.split("#")[0] ?? "")
+        ? `${baseUrl}${successPath}`
+        : defaultSuccess;
+    if (
+      successPath &&
+      isSafeRedirectPath(successPath.split("#")[0] ?? "") &&
+      !success_url.includes("{CHECKOUT_SESSION_ID}")
+    ) {
+      const join = success_url.includes("?") ? "&" : "?";
+      success_url = `${success_url}${join}session_id={CHECKOUT_SESSION_ID}`;
+    }
+    const cancel_url =
+      cancelPath && isSafeRedirectPath(cancelPath.split("#")[0] ?? "")
+        ? `${baseUrl}${cancelPath}`
+        : defaultCancel;
 
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
-      mode: "subscription",
+      mode,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${baseUrl.replace(/\/+$/, "")}/account?success=true`,
-      cancel_url: `${baseUrl.replace(/\/+$/, "")}/account`,
-      allow_promotion_codes: true,
+      success_url,
+      cancel_url,
+      allow_promotion_codes: mode === "subscription",
+      ...(mode === "payment"
+        ? {
+            metadata: {
+              userId: session.user.id,
+              type: "prepaid_doc",
+            },
+          }
+        : {}),
     });
 
     if (!checkoutSession.url) {

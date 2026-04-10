@@ -2,7 +2,15 @@ import { NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import OpenAI from "openai";
-import { isDocsUsageLimitDisabled, isOverLimit } from "@/lib/usage";
+import {
+  canProcessDocument,
+  isDocsUsageLimitDisabled,
+} from "@/lib/usage";
+import {
+  buildSpendingUsageDocumentLabel,
+  incrementSubscriptionDocUsage,
+} from "@/lib/document-usage";
+import { DocumentUsageFlow } from "@prisma/client";
 import {
   isPlausibleBankOrCardStatement,
   MULTI_NON_STATEMENT_MESSAGE,
@@ -160,22 +168,29 @@ export async function POST(req: NextRequest) {
     const subscription = await prisma.subscription.findUnique({
       where: { userId: session.user.id },
     });
-    const tier = subscription?.tier;
-    const used = subscription?.docsUsedThisMonth ?? 0;
-
-    if (!skipUsageLimit && isOverLimit(tier, used)) {
-      return Response.json({ error: "Usage limit reached" }, { status: 429 });
+    if (
+      !skipUsageLimit &&
+      !canProcessDocument(
+        subscription
+          ? {
+              tier: subscription.tier,
+              docsUsedThisMonth: subscription.docsUsedThisMonth,
+              prepaidDocCredits: subscription.prepaidDocCredits,
+            }
+          : null
+      )
+    ) {
+      return Response.json(
+        {
+          code: "USAGE_LIMIT",
+          error:
+            "Usage limit reached. Add prepaid documents or a monthly plan from your account.",
+        },
+        { status: 429 }
+      );
     }
 
-    await prisma.subscription.upsert({
-      where: { userId: session.user.id },
-      update: { docsUsedThisMonth: { increment: 1 } },
-      create: {
-        userId: session.user.id,
-        stripeCustomerId: `pending_${session.user.id}`,
-        docsUsedThisMonth: 1,
-      },
-    });
+    const userId = session.user.id;
 
     const openai = getOpenAI();
 
@@ -262,6 +277,17 @@ Rules:
       amount: t.amount,
       category: t.category,
     }));
+
+    if (!skipUsageLimit) {
+      const usageLabel = buildSpendingUsageDocumentLabel(
+        textDocs.map((d) => d.name),
+        imageGroupsNonEmpty.map((g) => g.name)
+      );
+      await incrementSubscriptionDocUsage(userId, {
+        documentName: usageLabel,
+        flow: DocumentUsageFlow.SPENDING,
+      });
+    }
 
     return Response.json({
       transactions,

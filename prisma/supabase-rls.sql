@@ -14,6 +14,8 @@ REVOKE ALL ON TABLE public."Session" FROM anon, authenticated;
 REVOKE ALL ON TABLE public."VerificationToken" FROM anon, authenticated;
 REVOKE ALL ON TABLE public."Subscription" FROM anon, authenticated;
 REVOKE ALL ON TABLE public."PasswordResetToken" FROM anon, authenticated;
+REVOKE ALL ON TABLE public."DocumentUsageLog" FROM anon, authenticated;
+REVOKE ALL ON TABLE public."AdminAuditLog" FROM anon, authenticated;
 
 ALTER TABLE public."User" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public."Account" ENABLE ROW LEVEL SECURITY;
@@ -21,6 +23,8 @@ ALTER TABLE public."Session" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public."VerificationToken" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public."Subscription" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public."PasswordResetToken" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."DocumentUsageLog" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."AdminAuditLog" ENABLE ROW LEVEL SECURITY;
 
 -- Optional: if you add a non-superuser Prisma role later, either:
 --   ALTER ROLE prisma BYPASSRLS;

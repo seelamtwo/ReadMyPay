@@ -112,7 +112,8 @@ export function SignupForm() {
       <CardHeader>
         <CardTitle>Create account</CardTitle>
         <CardDescription>
-          Free tier includes 2 document explanations per month.
+          Free tier includes 1 document explanation per month; add more at
+          $0.99 each or subscribe for $9.99/month.
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -102,10 +102,23 @@ export default async function HomePage() {
 
         <section className="mx-auto max-w-6xl px-4 py-16 text-center sm:px-6">
           <h2 className="text-2xl font-bold text-slate-900">Simple pricing</h2>
-          <div className="mx-auto mt-10 grid max-w-2xl gap-6 sm:grid-cols-2">
+          <div className="mx-auto mt-10 grid max-w-4xl gap-6 sm:grid-cols-3">
             {[
-              { name: "Free", price: "$0", detail: "2 documents / month" },
-              { name: "Monthly", price: "$9/mo", detail: "20 documents / month" },
+              {
+                name: "Free",
+                price: "$0",
+                detail: "1 document / month included",
+              },
+              {
+                name: "Pay per document",
+                price: "$0.99",
+                detail: "Each extra document after your free one",
+              },
+              {
+                name: "Monthly",
+                price: "$9.99/mo",
+                detail: "Up to 20 documents / month",
+              },
             ].map((tier) => (
               <div
                 key={tier.name}

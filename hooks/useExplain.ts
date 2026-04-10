@@ -2,20 +2,28 @@
 
 import { useCallback, useState } from "react";
 
-type ExplainArgs = {
+export type ExplainArgs = {
   extractedText: string;
   documentType: string;
   isImage: boolean;
   /** Multiple page images (e.g. scanned PDF rendered client-side). */
   imageUrls?: string[];
+  /** Original file name for usage history (optional). */
+  fileName?: string;
 };
+
+export type ExplainOutcome =
+  | { kind: "ok" }
+  | { kind: "usage_limit" }
+  | { kind: "error"; message: string };
 
 export function useExplain() {
   const [explanation, setExplanation] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
 
-  const explain = useCallback(async (args: ExplainArgs) => {
-    const { extractedText, documentType, isImage, imageUrls } = args;
+  const explain = useCallback(async (args: ExplainArgs): Promise<ExplainOutcome> => {
+    const { extractedText, documentType, isImage, imageUrls, fileName } =
+      args;
     setExplanation("");
     setIsStreaming(true);
 
@@ -25,6 +33,7 @@ export function useExplain() {
       extractedText: imageUrls?.length ? "" : extractedText,
     };
     if (imageUrls?.length) body.imageUrls = imageUrls;
+    if (fileName?.trim()) body.fileName = fileName.trim().slice(0, 512);
 
     let res: Response;
     try {
@@ -35,29 +44,49 @@ export function useExplain() {
         body: JSON.stringify(body),
       });
     } catch {
-      setExplanation(
-        "**Error:** Network error. Check your connection and try again."
-      );
       setIsStreaming(false);
-      return;
+      return {
+        kind: "error",
+        message:
+          "Network error. Check your connection and try again.",
+      };
     }
 
+    const ct = res.headers.get("content-type") ?? "";
+
     if (!res.ok) {
-      const msg = await res.text();
-      setExplanation(`**Error:** ${msg || res.statusText || "Request failed"}`);
       setIsStreaming(false);
-      return;
+      if (res.status === 429 && ct.includes("application/json")) {
+        try {
+          const j = (await res.json()) as { code?: string; error?: string };
+          if (j.code === "USAGE_LIMIT") {
+            return { kind: "usage_limit" };
+          }
+          return {
+            kind: "error",
+            message: j.error ?? "Usage limit reached.",
+          };
+        } catch {
+          return { kind: "error", message: "Usage limit reached." };
+        }
+      }
+      const msg = await res.text();
+      return {
+        kind: "error",
+        message: msg || res.statusText || "Request failed",
+      };
     }
 
     const reader = res.body?.getReader();
     const decoder = new TextDecoder();
 
     if (!reader) {
-      setExplanation(
-        "**Error:** No response body from server. Try again or use `npm run dev` and check the terminal for errors."
-      );
       setIsStreaming(false);
-      return;
+      return {
+        kind: "error",
+        message:
+          "No response body from server. Try again or check the server logs.",
+      };
     }
 
     try {
@@ -78,9 +107,13 @@ export function useExplain() {
           ? `${prev}\n\n**Error:** Stream interrupted.`
           : "**Error:** Stream interrupted."
       );
+      setIsStreaming(false);
+      return { kind: "error", message: "Stream interrupted." };
     } finally {
       setIsStreaming(false);
     }
+
+    return { kind: "ok" };
   }, []);
 
   const resetExplanation = useCallback(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
 import { extractTextFromPDF, extractTextFromImage } from "@/lib/pdf-extract";
 import { extractTextFromDocx } from "@/lib/word-extract";
@@ -14,6 +14,18 @@ import { PrivacyPill } from "@/components/upload/PrivacyPill";
 import { Button } from "@/components/ui/button";
 import { SpendingResults } from "@/components/spending/SpendingResults";
 import type { ParsedTransaction } from "@/types/spending";
+import { useDashboardUsage } from "@/components/dashboard/DashboardUsageProvider";
+import { UsageLimitDialog } from "@/components/usage/UsageLimitDialog";
+import type { PendingSpendingPayload } from "@/lib/pending-upload";
+import {
+  PENDING_SPENDING_OVERSIZED_KEY,
+  clearPendingSpending,
+  loadPendingSpending,
+} from "@/lib/pending-upload";
+import {
+  syncStripeCheckoutAfterRedirect,
+  waitUntilCanProcessDocument,
+} from "@/lib/wait-for-quota";
 
 const MIN_TEXT = 10;
 const MAX_FILES = 12;
@@ -72,13 +84,32 @@ async function extractOne(file: File): Promise<ExtractedPart> {
   throw new Error(`Unsupported file: ${file.name}`);
 }
 
-export function SpendingUploadZone() {
+type Props = {
+  resumeNonce?: number;
+  stripeCheckoutSessionId?: string | null;
+  onStripeResumeConsumed?: () => void;
+};
+
+export function SpendingUploadZone({
+  resumeNonce = 0,
+  stripeCheckoutSessionId = null,
+  onStripeResumeConsumed,
+}: Props) {
+  const stripeCheckoutSessionIdRef = useRef(stripeCheckoutSessionId);
+  stripeCheckoutSessionIdRef.current = stripeCheckoutSessionId;
+  const onStripeResumeConsumedRef = useRef(onStripeResumeConsumed);
+  onStripeResumeConsumedRef.current = onStripeResumeConsumed;
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<ParsedTransaction[] | null>(
     null
   );
   const [summary, setSummary] = useState<string>("");
+  const [usageLimitOpen, setUsageLimitOpen] = useState(false);
+  const [pendingForLimit, setPendingForLimit] =
+    useState<PendingSpendingPayload | null>(null);
+  const { refresh: refreshUsage } = useDashboardUsage();
 
   const updateTransactionCategory = useCallback(
     (index: number, category: string) => {
@@ -94,57 +125,28 @@ export function SpendingUploadZone() {
     []
   );
 
-  const onDrop = useCallback(async (files: File[]) => {
-    if (!files.length) return;
-    setError(null);
-    setTransactions(null);
-    setSummary("");
-
+  const submitSpending = useCallback(async (payload: PendingSpendingPayload) => {
     setBusy(true);
-
+    setError(null);
     try {
-      const parts = await Promise.all(files.map((f) => extractOne(f)));
-
-      const multiErr = validateMultiStatementParts(parts);
-      if (multiErr) {
-        setError(multiErr);
-        return;
-      }
-
-      const documents: { name: string; text: string }[] = [];
-      const imageGroups: { name: string; urls: string[] }[] = [];
-      let imageBudget = MAX_IMAGE_URLS;
-
-      for (const part of parts) {
-        const t = part.text?.trim() ?? "";
-        if (t.length > 0) {
-          documents.push({ name: part.name, text: t });
-        }
-        const imgs = part.imageUrls ?? [];
-        if (imgs.length > 0 && imageBudget > 0) {
-          const slice = imgs.slice(0, imageBudget);
-          imageBudget -= slice.length;
-          imageGroups.push({ name: part.name, urls: slice });
-        }
-      }
-
-      if (documents.length === 0 && imageGroups.length === 0) {
-        setError("No readable text or images found in these files.");
-        return;
-      }
-
       const res = await fetch("/api/spending-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          documents: documents.length ? documents : undefined,
-          imageGroups: imageGroups.length ? imageGroups : undefined,
-        }),
+        body: JSON.stringify(payload),
       });
-
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        code?: string;
+        transactions?: ParsedTransaction[];
+        overallSummary?: string;
+      };
       if (!res.ok) {
+        if (res.status === 429 && data.code === "USAGE_LIMIT") {
+          setPendingForLimit(payload);
+          setUsageLimitOpen(true);
+          return;
+        }
         setError(
           typeof data.error === "string"
             ? data.error
@@ -152,11 +154,11 @@ export function SpendingUploadZone() {
         );
         return;
       }
-
       setTransactions(data.transactions ?? []);
       setSummary(
         typeof data.overallSummary === "string" ? data.overallSummary : ""
       );
+      void refreshUsage({ silent: true });
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Could not process this file."
@@ -164,7 +166,120 @@ export function SpendingUploadZone() {
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [refreshUsage]);
+
+  const submitSpendingRef = useRef(submitSpending);
+  submitSpendingRef.current = submitSpending;
+
+  useEffect(() => {
+    if (!resumeNonce) return;
+    let cancelled = false;
+
+    async function resume() {
+      try {
+        setError(null);
+        setBusy(true);
+
+        if (
+          typeof sessionStorage !== "undefined" &&
+          sessionStorage.getItem(PENDING_SPENDING_OVERSIZED_KEY) === "1"
+        ) {
+          setError(
+            "Your payment went through. These files were too large to hold during checkout — please upload your statements again."
+          );
+          clearPendingSpending();
+          setBusy(false);
+          return;
+        }
+
+        await syncStripeCheckoutAfterRedirect(stripeCheckoutSessionIdRef.current);
+        if (cancelled) return;
+        const ready = await waitUntilCanProcessDocument();
+        if (cancelled) return;
+        if (!ready) {
+          setError(
+            "Payment may still be processing. Wait a minute, refresh, and try uploading again."
+          );
+          setBusy(false);
+          return;
+        }
+
+        const pending = loadPendingSpending();
+        if (!pending) {
+          setError(
+            "No saved upload found. Add your files again — your payment or credit should be on your account."
+          );
+          setBusy(false);
+          return;
+        }
+
+        if (cancelled) return;
+        await submitSpendingRef.current(pending);
+        if (cancelled) return;
+        clearPendingSpending();
+        setBusy(false);
+      } finally {
+        onStripeResumeConsumedRef.current?.();
+      }
+    }
+
+    void resume();
+    return () => {
+      cancelled = true;
+    };
+  }, [resumeNonce]);
+
+  const onDrop = useCallback(
+    async (files: File[]) => {
+      if (!files.length) return;
+      setError(null);
+      setTransactions(null);
+      setSummary("");
+
+      try {
+        const parts = await Promise.all(files.map((f) => extractOne(f)));
+
+        const multiErr = validateMultiStatementParts(parts);
+        if (multiErr) {
+          setError(multiErr);
+          return;
+        }
+
+        const documents: { name: string; text: string }[] = [];
+        const imageGroups: { name: string; urls: string[] }[] = [];
+        let imageBudget = MAX_IMAGE_URLS;
+
+        for (const part of parts) {
+          const t = part.text?.trim() ?? "";
+          if (t.length > 0) {
+            documents.push({ name: part.name, text: t });
+          }
+          const imgs = part.imageUrls ?? [];
+          if (imgs.length > 0 && imageBudget > 0) {
+            const slice = imgs.slice(0, imageBudget);
+            imageBudget -= slice.length;
+            imageGroups.push({ name: part.name, urls: slice });
+          }
+        }
+
+        if (documents.length === 0 && imageGroups.length === 0) {
+          setError("No readable text or images found in these files.");
+          return;
+        }
+
+        const payload: PendingSpendingPayload = {
+          documents: documents.length ? documents : undefined,
+          imageGroups: imageGroups.length ? imageGroups : undefined,
+        };
+        await submitSpending(payload);
+      } catch (e) {
+        setError(
+          e instanceof Error ? e.message : "Could not process this file."
+        );
+      }
+    },
+    [submitSpending]
+  );
 
   const onDropRejected = useCallback((rejections: FileRejection[]) => {
     const tooMany = rejections.some((r) =>
@@ -199,18 +314,28 @@ export function SpendingUploadZone() {
     },
     maxFiles: MAX_FILES,
     maxSize: 12 * 1024 * 1024,
-    disabled: busy,
+    disabled: busy || usageLimitOpen,
   });
 
   return (
     <div>
+      <UsageLimitDialog
+        open={usageLimitOpen}
+        onClose={() => {
+          setUsageLimitOpen(false);
+          setPendingForLimit(null);
+        }}
+        flow="spending"
+        pendingExplain={null}
+        pendingSpending={pendingForLimit}
+      />
       <div
         {...getRootProps()}
         className={`cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
           isDragActive
             ? "border-teal-400 bg-teal-50"
             : "border-slate-200 hover:border-slate-300"
-        } ${busy ? "pointer-events-none opacity-70" : ""}`}
+        } ${busy || usageLimitOpen ? "pointer-events-none opacity-70" : ""}`}
       >
         <input {...getInputProps()} />
         <p className="font-medium text-slate-900">
