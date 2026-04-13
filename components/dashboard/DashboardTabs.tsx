@@ -114,9 +114,10 @@ export function DashboardTabs() {
           </CardHeader>
           <CardContent>
             <p className="mb-4 text-sm text-slate-600">
-              Upload one bank or card statement per run. We extract transactions,
-              group spending by category, and show totals plus a pie chart. Each
-              analysis counts as one document toward your monthly limit.
+              Upload bank or card statements (PDF, Word, Excel, or images). We
+              extract transactions, group spending by category, and show totals
+              plus a pie chart. Each analysis counts as one document toward your
+              monthly limit.
             </p>
             <SpendingUploadZone
               resumeNonce={resumeSpend}

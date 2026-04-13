@@ -1,6 +1,7 @@
 import { requireAdminSession } from "@/lib/require-admin";
 import { getAdminDashboardStats } from "@/lib/admin-stats";
 import { getAdminUsersForTable } from "@/lib/admin-users";
+import { AdminCleanupUnverifiedPanel } from "@/components/admin/AdminCleanupUnverifiedPanel";
 import { AdminOperationsPanel } from "@/components/admin/AdminOperationsPanel";
 import { AdminUsersTable } from "@/components/admin/AdminUsersTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -100,6 +101,8 @@ export default async function AdminPage() {
       </div>
 
       <AdminUsersTable initialUsers={adminUsers} />
+
+      <AdminCleanupUnverifiedPanel />
 
       <AdminOperationsPanel />
     </>

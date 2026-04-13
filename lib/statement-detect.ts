@@ -25,6 +25,7 @@ const MID_TEXT = [
 
 const STRONG_NAME = [
   /statement/i,
+  /spreadsheet|excel|\.xlsx|\.xlsm?/i,
   /bank/i,
   /checking/i,
   /savings/i,

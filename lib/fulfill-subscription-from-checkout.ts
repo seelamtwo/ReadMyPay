@@ -97,6 +97,13 @@ export async function fulfillSubscriptionFromCheckoutSession(
       stripeSubscriptionId: stripeSub.id,
       stripePriceId: priceId,
       ...(tier ? { tier } : {}),
+      ...(!stripeSub.cancel_at_period_end
+        ? {
+            cancelAtPeriodEndAt: null,
+            cancelReasonCategory: null,
+            cancelReasonDetail: null,
+          }
+        : {}),
     },
   });
 

@@ -15,6 +15,7 @@ import {
   PRICE_PER_DOCUMENT_DISPLAY,
 } from "@/lib/pricing";
 import { getStripeSubscriptionSummary } from "@/lib/stripe-subscription-summary";
+import { resolvePrimaryStripeSubscriptionForCustomer } from "@/lib/stripe-subscription-primary";
 import type { DocumentUsageFlow } from "@prisma/client";
 
 function flowLabel(flow: DocumentUsageFlow): string {
@@ -69,9 +70,45 @@ export default async function AccountPage({
   if (!session?.user?.id) redirect("/login?callbackUrl=/account");
 
   const sp = searchParams;
-  const subscription = await prisma.subscription.findUnique({
+  let subscription = await prisma.subscription.findUnique({
     where: { userId: session.user.id },
   });
+
+  if (
+    subscription?.stripeCustomerId &&
+    !subscription.stripeCustomerId.startsWith("pending_") &&
+    (subscription.tier === "PERSONAL" || subscription.stripeSubscriptionId)
+  ) {
+    const primary = await resolvePrimaryStripeSubscriptionForCustomer(
+      subscription.stripeCustomerId
+    );
+    if (primary && primary.id !== subscription.stripeSubscriptionId) {
+      const priceId = primary.items.data[0]?.price?.id ?? null;
+      const pricePersonal = process.env.STRIPE_PRICE_PERSONAL?.trim();
+      const tierUpdate =
+        priceId && pricePersonal && priceId === pricePersonal
+          ? ("PERSONAL" as const)
+          : undefined;
+      await prisma.subscription.update({
+        where: { userId: session.user.id },
+        data: {
+          stripeSubscriptionId: primary.id,
+          stripePriceId: priceId,
+          ...(tierUpdate ? { tier: tierUpdate } : {}),
+          ...(!primary.cancel_at_period_end
+            ? {
+                cancelAtPeriodEndAt: null,
+                cancelReasonCategory: null,
+                cancelReasonDetail: null,
+              }
+            : {}),
+        },
+      });
+      subscription = await prisma.subscription.findUnique({
+        where: { userId: session.user.id },
+      });
+    }
+  }
 
   const tier = subscription?.tier ?? "FREE";
   const isMonthlyPlan = tier === "PERSONAL";
@@ -93,15 +130,32 @@ export default async function AccountPage({
       !subscription.stripeCustomerId.startsWith("pending_")
   );
 
-  const subscriptionSummary =
+  let subscriptionSummary =
     isMonthlyPlan && subscription?.stripeSubscriptionId
       ? await getStripeSubscriptionSummary(subscription.stripeSubscriptionId)
       : null;
 
+  if (
+    subscription &&
+    subscriptionSummary &&
+    !subscriptionSummary.cancelAtPeriodEnd &&
+    subscription.cancelAtPeriodEndAt
+  ) {
+    await prisma.subscription.update({
+      where: { userId: session.user.id },
+      data: {
+        cancelAtPeriodEndAt: null,
+        cancelReasonCategory: null,
+        cancelReasonDetail: null,
+      },
+    });
+  }
+
   const monthlyRenewalCancelled =
     isMonthlyPlan &&
-    (subscriptionSummary?.cancelAtPeriodEnd === true ||
-      Boolean(subscription?.cancelAtPeriodEndAt));
+    (subscriptionSummary != null
+      ? subscriptionSummary.cancelAtPeriodEnd
+      : Boolean(subscription?.cancelAtPeriodEndAt));
 
   const documentUsageLogs = await prisma.documentUsageLog.findMany({
     where: { userId: session.user.id },

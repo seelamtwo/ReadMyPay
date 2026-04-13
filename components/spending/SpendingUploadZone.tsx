@@ -5,7 +5,13 @@ import { useDropzone, type FileRejection } from "react-dropzone";
 import { extractTextFromPDF, extractTextFromImage } from "@/lib/pdf-extract";
 import { extractTextFromDocx } from "@/lib/word-extract";
 import { renderPdfPagesToDataUrls } from "@/lib/pdf-raster";
-import { isPdfFile, isImageFile, isWordDocxFile } from "@/lib/file-kind";
+import {
+  isPdfFile,
+  isImageFile,
+  isWordDocxFile,
+  isExcelFile,
+} from "@/lib/file-kind";
+import { extractTextFromExcel } from "@/lib/excel-extract";
 import {
   isPlausibleBankOrCardStatement,
   MULTI_NON_STATEMENT_MESSAGE,
@@ -72,6 +78,10 @@ async function extractOne(file: File): Promise<ExtractedPart> {
   }
   if (isWordDocxFile(file)) {
     const text = (await extractTextFromDocx(file)).trim();
+    return { name: file.name, text };
+  }
+  if (isExcelFile(file)) {
+    const text = (await extractTextFromExcel(file)).trim();
     return { name: file.name, text };
   }
   if (isImageFile(file)) {
@@ -295,7 +305,7 @@ export function SpendingUploadZone({
       return;
     }
     if (code === "file-invalid-type") {
-      setError("Use PDF, Word (.docx), or an image.");
+      setError("Use PDF, Word (.docx), Excel (.xlsx or .xls), or an image.");
       return;
     }
     if (rejections.length) {
@@ -310,6 +320,11 @@ export function SpendingUploadZone({
       "application/pdf": [".pdf"],
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         [".docx"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+        ".xlsx",
+      ],
+      "application/vnd.ms-excel": [".xls"],
+      "application/vnd.ms-excel.sheet.macroEnabled.12": [".xlsm"],
       "image/*": [".jpg", ".jpeg", ".png", ".webp"],
     },
     maxFiles: MAX_FILES,
@@ -347,7 +362,7 @@ export function SpendingUploadZone({
         </p>
         <p className="mt-2 text-sm text-slate-500">
           Up to {MAX_FILES} statements in one batch (consolidated) · PDF, Word
-          (.docx), or image · {MULTI_FILE_HINT}
+          (.docx), Excel (.xlsx, .xls), or image · {MULTI_FILE_HINT}
         </p>
         <PrivacyPill />
       </div>

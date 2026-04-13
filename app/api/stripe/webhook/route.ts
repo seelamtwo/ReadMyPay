@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
 import { fulfillPrepaidDocCheckoutSession } from "@/lib/fulfill-prepaid-checkout";
 import { fulfillSubscriptionFromCheckoutSession } from "@/lib/fulfill-subscription-from-checkout";
+import { resolvePrimaryStripeSubscriptionForCustomer } from "@/lib/stripe-subscription-primary";
 
 export const runtime = "nodejs";
 
@@ -53,21 +54,37 @@ export async function POST(req: NextRequest) {
       }
       case "customer.subscription.created":
       case "customer.subscription.updated": {
-        const sub = event.data.object as Stripe.Subscription;
-        const priceId = sub.items.data[0]?.price?.id;
+        const eventSub = event.data.object as Stripe.Subscription;
         const customerId =
-          typeof sub.customer === "string"
-            ? sub.customer
-            : sub.customer.id;
+          typeof eventSub.customer === "string"
+            ? eventSub.customer
+            : eventSub.customer.id;
+        const primary =
+          await resolvePrimaryStripeSubscriptionForCustomer(customerId);
+        if (!primary) {
+          await prisma.subscription.updateMany({
+            where: { stripeCustomerId: customerId },
+            data: {
+              tier: "FREE",
+              stripeSubscriptionId: null,
+              stripePriceId: null,
+              cancelAtPeriodEndAt: null,
+              cancelReasonCategory: null,
+              cancelReasonDetail: null,
+            },
+          });
+          break;
+        }
+        const priceId = primary.items.data[0]?.price?.id;
         const nextTier =
           priceId && tierMap[priceId] ? tierMap[priceId] : null;
         await prisma.subscription.updateMany({
           where: { stripeCustomerId: customerId },
           data: {
-            stripeSubscriptionId: sub.id,
+            stripeSubscriptionId: primary.id,
             stripePriceId: priceId ?? null,
             ...(nextTier ? { tier: nextTier } : {}),
-            ...(!sub.cancel_at_period_end
+            ...(!primary.cancel_at_period_end
               ? {
                   cancelAtPeriodEndAt: null,
                   cancelReasonCategory: null,
@@ -79,22 +96,45 @@ export async function POST(req: NextRequest) {
         break;
       }
       case "customer.subscription.deleted": {
-        const sub = event.data.object as Stripe.Subscription;
+        const deletedSub = event.data.object as Stripe.Subscription;
         const customerId =
-          typeof sub.customer === "string"
-            ? sub.customer
-            : sub.customer.id;
-        await prisma.subscription.updateMany({
-          where: { stripeCustomerId: customerId },
-          data: {
-            tier: "FREE",
-            stripeSubscriptionId: null,
-            stripePriceId: null,
-            cancelAtPeriodEndAt: null,
-            cancelReasonCategory: null,
-            cancelReasonDetail: null,
-          },
-        });
+          typeof deletedSub.customer === "string"
+            ? deletedSub.customer
+            : deletedSub.customer.id;
+        const primary =
+          await resolvePrimaryStripeSubscriptionForCustomer(customerId);
+        if (!primary) {
+          await prisma.subscription.updateMany({
+            where: { stripeCustomerId: customerId },
+            data: {
+              tier: "FREE",
+              stripeSubscriptionId: null,
+              stripePriceId: null,
+              cancelAtPeriodEndAt: null,
+              cancelReasonCategory: null,
+              cancelReasonDetail: null,
+            },
+          });
+        } else {
+          const priceId = primary.items.data[0]?.price?.id;
+          const nextTier =
+            priceId && tierMap[priceId] ? tierMap[priceId] : null;
+          await prisma.subscription.updateMany({
+            where: { stripeCustomerId: customerId },
+            data: {
+              stripeSubscriptionId: primary.id,
+              stripePriceId: priceId ?? null,
+              ...(nextTier ? { tier: nextTier } : {}),
+              ...(!primary.cancel_at_period_end
+                ? {
+                    cancelAtPeriodEndAt: null,
+                    cancelReasonCategory: null,
+                    cancelReasonDetail: null,
+                  }
+                : {}),
+            },
+          });
+        }
         break;
       }
       default:

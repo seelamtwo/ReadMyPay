@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import OpenAI from "openai";
+import type OpenAI from "openai";
+import { createOpenAI } from "@/lib/openai-client";
 import {
   canProcessDocument,
   isDocsUsageLimitDisabled,
@@ -73,9 +74,7 @@ const BodySchema = z
   });
 
 function getOpenAI() {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error("OPENAI_API_KEY is not configured");
-  return new OpenAI({ apiKey: key });
+  return createOpenAI();
 }
 
 function stripJsonFence(raw: string): string {

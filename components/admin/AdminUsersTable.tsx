@@ -200,8 +200,11 @@ export function AdminUsersTable({ initialUsers }: { initialUsers: AdminUserTable
       <CardHeader>
         <CardTitle className="text-base">Users</CardTitle>
         <p className="text-sm font-normal text-slate-600">
-          Monthly = paid subscription (PERSONAL tier). Actions use the same APIs
-          as before; each change is logged in AdminAuditLog.
+          Monthly = paid subscription (PERSONAL tier).{" "}
+          <span className="font-medium text-slate-800">Unverified</span> means
+          the user must confirm email before using the app (credential signups).
+          Actions use the same APIs as before; each change is logged in
+          AdminAuditLog.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -219,10 +222,13 @@ export function AdminUsersTable({ initialUsers }: { initialUsers: AdminUserTable
         ) : null}
 
         <div className="overflow-x-auto rounded-lg border border-slate-200">
-          <table className="w-full min-w-[960px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[1040px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="px-3 py-2 font-medium text-slate-900">Email</th>
+                <th className="px-3 py-2 font-medium text-slate-900">
+                  Email verified
+                </th>
                 <th className="px-3 py-2 font-medium text-slate-900">User id</th>
                 <th className="px-3 py-2 font-medium text-slate-900">Plan</th>
                 <th className="px-3 py-2 font-medium text-slate-900 tabular-nums">
@@ -260,6 +266,34 @@ export function AdminUsersTable({ initialUsers }: { initialUsers: AdminUserTable
                           {row.name}
                         </span>
                       ) : null}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2">
+                      {row.emailVerification === "verified" ? (
+                        <span
+                          className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900"
+                          title={
+                            row.emailVerifiedAtIso
+                              ? `Verified ${row.emailVerifiedAtIso}`
+                              : "Verified"
+                          }
+                        >
+                          Verified
+                        </span>
+                      ) : row.emailVerification === "unverified" ? (
+                        <span
+                          className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-950"
+                          title="Must verify email before dashboard/API access"
+                        >
+                          Unverified
+                        </span>
+                      ) : (
+                        <span
+                          className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
+                          title="OAuth or legacy account — no email link step"
+                        >
+                          N/A
+                        </span>
+                      )}
                     </td>
                     <td
                       className="whitespace-nowrap px-3 py-2 font-mono text-xs text-slate-600"

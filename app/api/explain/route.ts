@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import OpenAI from "openai";
+import type OpenAI from "openai";
+import { createOpenAI } from "@/lib/openai-client";
 import {
   canProcessDocument,
   isDocsUsageLimitDisabled,
@@ -34,9 +35,7 @@ Rules:
 - Be warm and reassuring — many users feel anxious about financial documents.`;
 
 function getOpenAI() {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error("OPENAI_API_KEY is not configured");
-  return new OpenAI({ apiKey: key });
+  return createOpenAI();
 }
 
 function parseImageUrls(body: unknown): string[] {

@@ -176,7 +176,7 @@ export function SubscriptionActions({
               : `Monthly ${PRICE_MONTHLY_DISPLAY}`}
           </Button>
         )}
-        {!missingPerDoc && (
+        {!missingPerDoc && !isMonthlyPlan && (
           <Button
             type="button"
             variant="outline"
@@ -190,8 +190,9 @@ export function SubscriptionActions({
         )}
       </div>
       <p className="text-xs text-slate-500">
-        Per-document purchases add one credit to your account after payment.
-        The monthly plan includes up to 20 documents per billing month.
+        {isMonthlyPlan
+          ? "The monthly plan includes up to 20 documents per billing month."
+          : "Per-document purchases add one credit to your account after payment. The monthly plan includes up to 20 documents per billing month."}
       </p>
 
       {hasStripeCustomer && (

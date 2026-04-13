@@ -20,3 +20,17 @@ export function isWordDocxFile(file: File): boolean {
   }
   return /\.docx$/i.test(file.name);
 }
+
+/** Excel workbooks (.xlsx, .xlsm, legacy .xls). */
+export function isExcelFile(file: File): boolean {
+  const t = file.type;
+  if (
+    t ===
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    t === "application/vnd.ms-excel" ||
+    t === "application/vnd.ms-excel.sheet.macroEnabled.12"
+  ) {
+    return true;
+  }
+  return /\.(xlsx|xlsm|xls)$/i.test(file.name);
+}
