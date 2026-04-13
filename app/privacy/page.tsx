@@ -1,10 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Privacy Policy",
   description: "How Read My Pay handles your data",
+  alternates: { canonical: "/privacy" },
 };
 
 export default function PrivacyPage() {

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { AppMark } from "@/components/brand/AppMark";
@@ -7,10 +8,12 @@ import {
   CardContent,
   CardHeader,
 } from "@/components/ui/card";
+import { noIndexFollow } from "@/lib/seo-metadata";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Verify email",
   description: "Confirm your Read My Pay email address",
+  robots: noIndexFollow,
 };
 
 function VerifyEmailFallback() {

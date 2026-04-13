@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
 import { fulfillPrepaidDocCheckoutSession } from "@/lib/fulfill-prepaid-checkout";
 import { fulfillSubscriptionFromCheckoutSession } from "@/lib/fulfill-subscription-from-checkout";
+import { repairSubscriptionsByStripeCustomerId } from "@/lib/stripe-repair-stale-customer";
 import { resolvePrimaryStripeSubscriptionForCustomer } from "@/lib/stripe-subscription-primary";
 
 export const runtime = "nodejs";
@@ -59,8 +60,13 @@ export async function POST(req: NextRequest) {
           typeof eventSub.customer === "string"
             ? eventSub.customer
             : eventSub.customer.id;
-        const primary =
+        const resolved =
           await resolvePrimaryStripeSubscriptionForCustomer(customerId);
+        if (resolved.kind === "customer_missing") {
+          await repairSubscriptionsByStripeCustomerId(customerId);
+          break;
+        }
+        const primary = resolved.subscription;
         if (!primary) {
           await prisma.subscription.updateMany({
             where: { stripeCustomerId: customerId },
@@ -101,8 +107,13 @@ export async function POST(req: NextRequest) {
           typeof deletedSub.customer === "string"
             ? deletedSub.customer
             : deletedSub.customer.id;
-        const primary =
+        const resolved =
           await resolvePrimaryStripeSubscriptionForCustomer(customerId);
+        if (resolved.kind === "customer_missing") {
+          await repairSubscriptionsByStripeCustomerId(customerId);
+          break;
+        }
+        const primary = resolved.subscription;
         if (!primary) {
           await prisma.subscription.updateMany({
             where: { stripeCustomerId: customerId },

@@ -1,10 +1,13 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DashboardTabs } from "@/components/dashboard/DashboardTabs";
+import { noIndexFollow } from "@/lib/seo-metadata";
 
-export const metadata = {
-  title: "Dashboard | Read My Pay",
+export const metadata: Metadata = {
+  title: "Dashboard",
   description:
     "Explain financial documents or analyze spending from bank statements.",
+  robots: noIndexFollow,
 };
 
 function DashboardFallback() {

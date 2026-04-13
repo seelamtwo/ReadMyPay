@@ -1,10 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AppMark } from "@/components/brand/AppMark";
 import { SignupForm } from "@/components/auth/SignupForm";
+import { noIndexFollow } from "@/lib/seo-metadata";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Sign up",
   description: "Create a Read My Pay account",
+  robots: noIndexFollow,
 };
 
 export default function SignupPage() {

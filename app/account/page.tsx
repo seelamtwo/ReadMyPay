@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
@@ -15,7 +16,9 @@ import {
   PRICE_PER_DOCUMENT_DISPLAY,
 } from "@/lib/pricing";
 import { getStripeSubscriptionSummary } from "@/lib/stripe-subscription-summary";
+import { repairSubscriptionAfterMissingStripeCustomer } from "@/lib/stripe-repair-stale-customer";
 import { resolvePrimaryStripeSubscriptionForCustomer } from "@/lib/stripe-subscription-primary";
+import { noIndexFollow } from "@/lib/seo-metadata";
 import type { DocumentUsageFlow } from "@prisma/client";
 
 function flowLabel(flow: DocumentUsageFlow): string {
@@ -41,9 +44,10 @@ function formatProcessedAtUtc(d: Date): string {
   })}`;
 }
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Account",
   description: "Subscription and usage",
+  robots: noIndexFollow,
 };
 
 /** Personalized; avoid stale RSC cache after in-app cancel / Stripe updates. */
@@ -79,10 +83,19 @@ export default async function AccountPage({
     !subscription.stripeCustomerId.startsWith("pending_") &&
     (subscription.tier === "PERSONAL" || subscription.stripeSubscriptionId)
   ) {
-    const primary = await resolvePrimaryStripeSubscriptionForCustomer(
+    const resolved = await resolvePrimaryStripeSubscriptionForCustomer(
       subscription.stripeCustomerId
     );
-    if (primary && primary.id !== subscription.stripeSubscriptionId) {
+    if (resolved.kind === "customer_missing") {
+      await repairSubscriptionAfterMissingStripeCustomer(session.user.id);
+      subscription = await prisma.subscription.findUnique({
+        where: { userId: session.user.id },
+      });
+    } else if (
+      resolved.subscription &&
+      resolved.subscription.id !== subscription.stripeSubscriptionId
+    ) {
+      const primary = resolved.subscription;
       const priceId = primary.items.data[0]?.price?.id ?? null;
       const pricePersonal = process.env.STRIPE_PRICE_PERSONAL?.trim();
       const tierUpdate =

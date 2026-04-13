@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FileText, Lock, Sparkles } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -7,16 +8,23 @@ import {
   HomeHeroCtas,
   HomePricingCta,
 } from "@/components/home/HomeCtaButtons";
+import { SiteJsonLd } from "@/components/seo/SiteJsonLd";
+import { getSiteUrl } from "@/lib/site-config";
 
-export const metadata = {
-  title: "Read My Pay — Plain-English financial documents",
+export const metadata: Metadata = {
+  title: "Plain-English financial documents",
   description:
     "Upload your pay stub, bank statement, or tax document — get a plain-English explanation in seconds. Nothing stored.",
+  alternates: {
+    canonical: "/",
+  },
 };
 
 export default async function HomePage() {
+  const siteUrl = getSiteUrl();
   return (
     <div className="flex min-h-screen flex-col">
+      <SiteJsonLd siteUrl={siteUrl} />
       <Navbar />
       <main className="flex-1">
         <section className="border-b border-slate-200 bg-gradient-to-b from-emerald-50/80 to-white">

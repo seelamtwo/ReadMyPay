@@ -1,11 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { SUPPORT_EMAIL } from "@/lib/support-contact";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Contact",
   description: "Contact Read My Pay support",
+  alternates: { canonical: "/contact" },
 };
 
 export default function ContactPage() {

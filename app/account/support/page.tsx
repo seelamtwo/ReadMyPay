@@ -1,12 +1,15 @@
+import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContactSupportForm } from "@/components/account/ContactSupportForm";
 import { SUPPORT_EMAIL } from "@/lib/support-contact";
+import { noIndexFollow } from "@/lib/seo-metadata";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Support",
   description: "Contact and policies",
+  robots: noIndexFollow,
 };
 
 export default async function AccountSupportPage() {
