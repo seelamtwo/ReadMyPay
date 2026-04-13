@@ -1,3 +1,8 @@
+/**
+ * Next.js serves this at `/sitemap.xml` (no extra package needed).
+ * In Google Search Console, submit: `${NEXT_PUBLIC_APP_URL}/sitemap.xml`
+ * (e.g. https://www.readmypay.com/sitemap.xml).
+ */
 import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/site-config";
 import { getAllBlogPostsMerged } from "@/lib/blog-data";

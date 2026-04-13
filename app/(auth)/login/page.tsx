@@ -12,7 +12,8 @@ import { noIndexFollow } from "@/lib/seo-metadata";
 
 export const metadata: Metadata = {
   title: "Log in",
-  description: "Sign in to Read My Pay",
+  description:
+    "Sign in to Read My Pay to explain pay stubs, tax forms, and bank statements, or use spending summaries on your plan.",
   robots: noIndexFollow,
 };
 

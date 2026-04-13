@@ -1,11 +1,13 @@
+import type { Metadata } from "next";
 import { requireAdminSession } from "@/lib/require-admin";
 import { getAdminDashboardStats } from "@/lib/admin-stats";
 import { getAdminUsersForTable } from "@/lib/admin-users";
 import { AdminOverview } from "@/components/admin/AdminOverview";
 import { AdminTabs } from "@/components/admin/AdminTabs";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Admin",
+  description: "Internal admin dashboard for Read My Pay operators.",
   robots: { index: false, follow: false },
 };
 

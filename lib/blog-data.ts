@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { blogPosts as staticBlogPosts, type BlogPost } from "@/lib/blog-posts";
+import { staticBlogSeoDescription } from "@/lib/blog-static-seo";
 
 export type { BlogPost };
 
@@ -11,8 +12,19 @@ export type BlogPostWithSeo = BlogPost & {
   source: "static" | "db";
 };
 
+function enrichStaticPost(p: BlogPost): BlogPostWithSeo {
+  return {
+    ...p,
+    seoDescription:
+      p.seoDescription?.trim() ||
+      staticBlogSeoDescription(p.slug) ||
+      null,
+    source: "static",
+  };
+}
+
 function staticOnly(): BlogPostWithSeo[] {
-  return staticBlogPosts.map((p) => ({ ...p, source: "static" as const }));
+  return staticBlogPosts.map(enrichStaticPost);
 }
 
 function mapDbRow(row: {
@@ -25,6 +37,10 @@ function mapDbRow(row: {
   seoDescription: string | null;
   publishedAt: Date;
 }): BlogPostWithSeo {
+  const seoDescription =
+    row.seoDescription?.trim() ||
+    staticBlogSeoDescription(row.slug) ||
+    null;
   return {
     slug: row.slug,
     title: row.title,
@@ -33,7 +49,7 @@ function mapDbRow(row: {
     date: row.publishedAt.toISOString().slice(0, 10),
     seoKeywords: row.seoKeywords,
     seoTitle: row.seoTitle,
-    seoDescription: row.seoDescription,
+    seoDescription,
     source: "db",
   };
 }
@@ -66,12 +82,7 @@ export async function getAllBlogPostsMerged(): Promise<BlogPostWithSeo[]> {
   const fromDb = dbRows.map(mapDbRow);
   const fromStaticStatic = staticBlogPosts
     .filter((p) => !dbSlugs.has(p.slug))
-    .map(
-      (p): BlogPostWithSeo => ({
-        ...p,
-        source: "static",
-      })
-    );
+    .map(enrichStaticPost);
   return [...fromDb, ...fromStaticStatic].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
@@ -90,7 +101,7 @@ export async function getBlogPostBySlugMerged(
   }
   const stat = staticBlogPosts.find((p) => p.slug === slug);
   if (!stat) return undefined;
-  return { ...stat, source: "static" };
+  return enrichStaticPost(stat);
 }
 
 export function parseKeywordsCommaSeparated(raw: string | null | undefined): string[] {

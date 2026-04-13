@@ -12,7 +12,8 @@ import { noIndexFollow } from "@/lib/seo-metadata";
 
 export const metadata: Metadata = {
   title: "Reset password",
-  description: "Choose a new Read My Pay password",
+  description:
+    "Choose a new password for your Read My Pay account using the link from your email.",
   robots: noIndexFollow,
 };
 

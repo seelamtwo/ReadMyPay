@@ -3,16 +3,22 @@ import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { getAllBlogPostsMerged } from "@/lib/blog-data";
-import { DEFAULT_SITE_KEYWORDS } from "@/lib/site-config";
+import { DEFAULT_SITE_KEYWORDS, SITE_NAME } from "@/lib/site-config";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Blog",
+  title: "Blog — Pay Stubs, Taxes & Statements Explained",
   description:
-    "Tips and guides on understanding pay stubs, bank statements, and spending—with Read My Pay.",
+    "Plain-English articles on pay stubs, W-2s, 1099s, bank statements, Social Security, Medicare, pensions, and IRS notices—plus how Read My Pay keeps documents private.",
   keywords: DEFAULT_SITE_KEYWORDS,
   alternates: { canonical: "/blog" },
+  openGraph: {
+    title: `Blog — guides for pay stubs & tax forms | ${SITE_NAME}`,
+    description:
+      "Plain-English articles on pay stubs, W-2s, 1099s, bank statements, and benefits paperwork.",
+    url: "/blog",
+  },
 };
 
 function formatDate(iso: string): string {

@@ -7,6 +7,8 @@ export type BlogPost = {
   content: string;
   /** Comma-separated SEO keywords (also used in article JSON-LD). */
   seoKeywords?: string | null;
+  /** Optional meta description override (otherwise filled from lib/blog-static-seo). */
+  seoDescription?: string | null;
 };
 
 /**
@@ -52,6 +54,8 @@ YTD stands for Year to Date. Most pay stubs show two columns: what was taken out
 
 You don't need to study your pay stub like a textbook every two weeks. But it's worth a 30-second scan to confirm that your gross pay matches what you expected to earn, that deductions for insurance or retirement are the amounts you signed up for, and that nothing new appeared on the deductions list without explanation. Mistakes do happen in payroll — and the only way to catch them is to look.
 
+At tax time, your employer summarizes the year on a W-2—see our [W-2 form guide](/blog/what-is-w2-form-january) for every box explained.
+
 If you've gone through this and your pay stub still has lines you can't identify, you're not alone. At ReadMyPay.com, you can upload your document and get a plain English explanation of every single line — privately, with nothing stored or saved. It's built for exactly this situation.`,
   },
   {
@@ -95,6 +99,8 @@ These boxes show your state wages and how much state income tax was withheld. If
 ## What to do when your W2 arrives
 
 First, make sure the name, address, and Social Security number on the form are correct. An error there can cause problems with the IRS. Second, compare Box 1 to your final pay stub of the year — if they're significantly different and you don't know why, ask your HR department before filing. Third, keep all your W2s in one place until your taxes are done.
+
+Freelance and other non-wage income usually arrives on a [1099](/blog/what-is-1099-form-guide) instead—here is how the common variants work.
 
 If you'd like a plain English walkthrough of your actual W2 — every box, explained specifically for your document — you can upload it at ReadMyPay.com. Nothing is stored on our servers. Your document is read in your browser and never saved anywhere.`,
   },

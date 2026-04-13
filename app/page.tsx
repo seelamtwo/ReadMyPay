@@ -12,11 +12,17 @@ import { SiteJsonLd } from "@/components/seo/SiteJsonLd";
 import { getSiteUrl } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Plain-English financial documents",
+  title: "Pay Stub, W-2 & Bank Statement Help — Plain English",
   description:
-    "Upload your pay stub, bank statement, or tax document — get a plain-English explanation in seconds. Nothing stored.",
+    "Understand pay stubs, W-2s, 1099s, and bank statements in plain English. Upload a document for a clear line-by-line explanation—privacy-first, nothing stored on our servers.",
   alternates: {
     canonical: "/",
+  },
+  openGraph: {
+    title: "Pay Stub, W-2 & Bank Statement Help — Plain English | Read My Pay",
+    description:
+      "Understand pay stubs, W-2s, 1099s, and bank statements in plain English. Privacy-first—your files are not stored on our servers.",
+    url: "/",
   },
 };
 

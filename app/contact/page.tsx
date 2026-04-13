@@ -6,7 +6,8 @@ import { SUPPORT_EMAIL } from "@/lib/support-contact";
 
 export const metadata: Metadata = {
   title: "Contact",
-  description: "Contact Read My Pay support",
+  description:
+    "Email Read My Pay for billing, account help, or product feedback. We respond to support requests as soon as we can.",
   alternates: { canonical: "/contact" },
 };
 

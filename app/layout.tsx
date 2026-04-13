@@ -5,7 +5,9 @@ import { Providers } from "@/components/providers";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import {
   DEFAULT_DESCRIPTION,
+  DEFAULT_OG_IMAGE_PATH,
   DEFAULT_SITE_KEYWORDS,
+  DEFAULT_SITE_TITLE,
   getSiteUrl,
   SITE_NAME,
 } from "@/lib/site-config";
@@ -28,7 +30,7 @@ const googleSiteVerification =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: SITE_NAME,
+    default: DEFAULT_SITE_TITLE,
     template: "%s | Read My Pay",
   },
   description: DEFAULT_DESCRIPTION,
@@ -42,14 +44,24 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
+    url: siteUrl,
     siteName: SITE_NAME,
-    title: SITE_NAME,
+    title: DEFAULT_SITE_TITLE,
     description: DEFAULT_DESCRIPTION,
+    images: [
+      {
+        url: DEFAULT_OG_IMAGE_PATH,
+        width: 1200,
+        height: 630,
+        alt: `${SITE_NAME} — Plain English explanations for pay stubs and tax documents`,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: SITE_NAME,
+    title: DEFAULT_SITE_TITLE,
     description: DEFAULT_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE_PATH],
   },
   robots: {
     index: true,

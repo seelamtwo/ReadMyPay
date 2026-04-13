@@ -19,8 +19,15 @@ export function getSiteUrl(): string {
 
 export const SITE_NAME = "Read My Pay";
 
+/** Default `<title>` when a page does not override (keyword-rich for search). */
+export const DEFAULT_SITE_TITLE =
+  "Pay Stub, W-2 & Tax Document Help — Plain English | Read My Pay";
+
 export const DEFAULT_DESCRIPTION =
   "Upload pay stubs, bank statements, or tax documents for plain-English explanations. Privacy-first—your files are not stored on our servers.";
+
+/** Path to generated OG/Twitter image (`app/opengraph-image.tsx`). */
+export const DEFAULT_OG_IMAGE_PATH = "/opengraph-image";
 
 /** Site-wide default keywords (blog posts add their own via metadata). */
 export const DEFAULT_SITE_KEYWORDS: string[] = [

@@ -41,6 +41,11 @@ export function HomeHeroCtas({ className }: HeroProps) {
             Account
           </Button>
         </Link>
+        <Link href="/blog">
+          <Button variant="outline" size="lg">
+            Blog
+          </Button>
+        </Link>
       </div>
     );
   }
@@ -55,6 +60,11 @@ export function HomeHeroCtas({ className }: HeroProps) {
       <Link href="/login">
         <Button variant="outline" size="lg">
           Log in
+        </Button>
+      </Link>
+      <Link href="/blog">
+        <Button variant="outline" size="lg">
+          Blog
         </Button>
       </Link>
     </div>

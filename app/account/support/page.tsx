@@ -8,7 +8,8 @@ import { noIndexFollow } from "@/lib/seo-metadata";
 
 export const metadata: Metadata = {
   title: "Support",
-  description: "Contact and policies",
+  description:
+    "Signed-in support for Read My Pay: contact billing or technical help, read policies, and send a message to our team.",
   robots: noIndexFollow,
 };
 

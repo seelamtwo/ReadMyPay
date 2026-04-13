@@ -46,7 +46,8 @@ function formatProcessedAtUtc(d: Date): string {
 
 export const metadata: Metadata = {
   title: "Account",
-  description: "Subscription and usage",
+  description:
+    "Manage your Read My Pay subscription, usage limits, monthly document allowance, and Stripe billing from your account.",
   robots: noIndexFollow,
 };
 

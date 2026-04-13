@@ -6,7 +6,7 @@ import { noIndexFollow } from "@/lib/seo-metadata";
 export const metadata: Metadata = {
   title: "Dashboard",
   description:
-    "Explain financial documents or analyze spending from bank statements.",
+    "Explain documents or upload bank statements for spending categories—your Read My Pay dashboard for signed-in users.",
   robots: noIndexFollow,
 };
 

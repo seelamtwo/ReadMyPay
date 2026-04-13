@@ -6,7 +6,8 @@ import { noIndexFollow } from "@/lib/seo-metadata";
 
 export const metadata: Metadata = {
   title: "Sign up",
-  description: "Create a Read My Pay account",
+  description:
+    "Create a free Read My Pay account to upload documents for plain-English explanations and optional spending insights.",
   robots: noIndexFollow,
 };
 

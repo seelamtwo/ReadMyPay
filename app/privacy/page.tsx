@@ -5,7 +5,8 @@ import { Footer } from "@/components/layout/Footer";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "How Read My Pay handles your data",
+  description:
+    "How Read My Pay handles sign-in, uploads, subscriptions, analytics, and your rights. Privacy-first: financial documents are not stored on our servers after processing.",
   alternates: { canonical: "/privacy" },
 };
 

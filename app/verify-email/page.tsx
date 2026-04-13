@@ -12,7 +12,8 @@ import { noIndexFollow } from "@/lib/seo-metadata";
 
 export const metadata: Metadata = {
   title: "Verify email",
-  description: "Confirm your Read My Pay email address",
+  description:
+    "Confirm your email address to finish setting up your Read My Pay account and secure your login.",
   robots: noIndexFollow,
 };
 

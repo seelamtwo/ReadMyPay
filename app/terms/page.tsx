@@ -6,7 +6,8 @@ import { SUPPORT_EMAIL } from "@/lib/support-contact";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: "Terms for using Read My Pay",
+  description:
+    "Terms of service for Read My Pay: acceptable use, subscriptions, disclaimers, and limitation of liability. Read before using the site.",
   alternates: { canonical: "/terms" },
 };
 

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { BlogPostBody } from "@/components/blog/BlogPostBody";
+import { BlogRelatedPosts } from "@/components/blog/BlogRelatedPosts";
 import { BlogArticleJsonLd } from "@/components/seo/BlogArticleJsonLd";
 import { getBlogPostBySlugMerged } from "@/lib/blog-data";
 import { buildBlogPostMetadata } from "@/lib/blog-metadata";
@@ -48,6 +49,7 @@ export default async function BlogPostPage({ params }: Props) {
         <h1 className="mt-2 text-3xl font-bold text-slate-900">{post.title}</h1>
         <p className="mt-3 text-lg text-slate-600">{post.excerpt}</p>
         <BlogPostBody content={post.content} />
+        <BlogRelatedPosts slug={post.slug} />
         <p className="mt-10 border-t border-slate-200 pt-8 text-sm text-slate-600">
           <Link href="/blog" className="font-medium text-emerald-700 hover:underline">
             ← All posts
