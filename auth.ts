@@ -45,6 +45,16 @@ const providers: NextAuthConfig["providers"] = [
           ? rawTs.trim()
           : null;
 
+      const user = await prisma.user.findFirst({
+        where: { email: { equals: email, mode: "insensitive" } },
+      });
+      if (!user?.hashedPassword) return null;
+      const valid = await bcrypt.compare(password, user.hashedPassword);
+      if (!valid) return null;
+
+      // Turnstile tokens are single-use at Cloudflare. Verify after password so a wrong
+      // password does not consume the token (retry without refreshing). Brute force is
+      // still mitigated by IP rate limits on /api/auth/*/credentials (middleware).
       const ip = getClientIpFromHeaders(request.headers);
       const captcha = await verifyTurnstileToken(turnstile, ip);
       if (!captcha.ok) {
@@ -52,12 +62,6 @@ const providers: NextAuthConfig["providers"] = [
         throw new CaptchaSignin();
       }
 
-      const user = await prisma.user.findFirst({
-        where: { email: { equals: email, mode: "insensitive" } },
-      });
-      if (!user?.hashedPassword) return null;
-      const valid = await bcrypt.compare(password, user.hashedPassword);
-      if (!valid) return null;
       return { id: user.id, email: user.email, name: user.name };
     },
   }),

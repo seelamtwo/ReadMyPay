@@ -22,6 +22,9 @@ import { isAuthFlowPath, safePostLoginPath } from "@/lib/safe-post-login-path";
 
 const POST_LOGIN_FALLBACK = "/dashboard";
 
+const CAPTCHA_ERROR_HINT =
+  "Security check failed or expired. Complete the challenge below and try again.";
+
 /** After successful signIn, prefer server `url` but never send users back to auth pages. */
 function resolvePostLoginHref(
   res: { ok: boolean; url: string | null },
@@ -52,6 +55,8 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
+  /** Remount Turnstile after a failed captcha so the user gets a fresh token without a full refresh. */
+  const [turnstileMountKey, setTurnstileMountKey] = useState(0);
 
   const showGoogle =
     process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
@@ -62,10 +67,12 @@ export function LoginForm() {
     if (!err) return;
     if (err === "CredentialsSignin") {
       setError(
-        code === "captcha"
-          ? "Security check failed. Refresh the page, complete the captcha again, and try signing in."
-          : "Invalid email or password."
+        code === "captcha" ? CAPTCHA_ERROR_HINT : "Invalid email or password."
       );
+      if (code === "captcha" && isTurnstileRequiredClient()) {
+        setTurnstileMountKey((k) => k + 1);
+        setTurnstileToken("");
+      }
       return;
     }
     if (err === "Configuration") {
@@ -99,9 +106,13 @@ export function LoginForm() {
       if (res.error) {
         setError(
           res.code === "captcha"
-            ? "Security check failed. Refresh the page, complete the captcha again, and try signing in."
+            ? CAPTCHA_ERROR_HINT
             : "Invalid email or password."
         );
+        if (res.code === "captcha" && isTurnstileRequiredClient()) {
+          setTurnstileMountKey((k) => k + 1);
+          setTurnstileToken("");
+        }
         return;
       }
       if (!res.ok) {
@@ -179,6 +190,7 @@ export function LoginForm() {
             </p>
           </div>
           <TurnstileField
+            key={turnstileMountKey}
             className="flex justify-center"
             onToken={(t) => setTurnstileToken(t)}
             onExpire={() => setTurnstileToken("")}
