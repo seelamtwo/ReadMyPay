@@ -5,6 +5,7 @@ import { Providers } from "@/components/providers";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import {
   DEFAULT_DESCRIPTION,
+  DEFAULT_SITE_KEYWORDS,
   getSiteUrl,
   SITE_NAME,
 } from "@/lib/site-config";
@@ -31,6 +32,7 @@ export const metadata: Metadata = {
     template: "%s | Read My Pay",
   },
   description: DEFAULT_DESCRIPTION,
+  keywords: DEFAULT_SITE_KEYWORDS,
   applicationName: SITE_NAME,
   formatDetection: {
     email: false,

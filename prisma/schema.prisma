@@ -133,3 +133,24 @@ enum Tier {
   FREE
   PERSONAL
 }
+
+/// CMS blog posts (admin-authored). Merged with static `lib/blog-posts` by slug (DB wins).
+model BlogPost {
+  id               String   @id @default(cuid())
+  slug             String   @unique @db.VarChar(320)
+  title            String   @db.VarChar(512)
+  excerpt          String   @db.Text
+  content          String   @db.Text
+  /// Comma-separated phrases for meta keywords and SEO.
+  seoKeywords      String?  @db.VarChar(1024)
+  /// Optional override for document title and Open Graph title.
+  seoTitle         String?  @db.VarChar(512)
+  /// Optional override for meta description.
+  seoDescription   String?  @db.Text
+  published        Boolean  @default(true)
+  publishedAt      DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([published, publishedAt(sort: Desc)])
+}

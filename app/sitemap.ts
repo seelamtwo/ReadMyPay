@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/site-config";
+import { getAllBlogPostsMerged } from "@/lib/blog-data";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getSiteUrl();
   const lastModified = new Date();
 
@@ -11,12 +12,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
       { path: "/privacy", changeFrequency: "monthly", priority: 0.7 },
       { path: "/terms", changeFrequency: "monthly", priority: 0.7 },
       { path: "/contact", changeFrequency: "monthly", priority: 0.7 },
+      { path: "/blog", changeFrequency: "weekly", priority: 0.75 },
     ];
 
-  return paths.map(({ path, changeFrequency, priority }) => ({
+  const staticEntries = paths.map(({ path, changeFrequency, priority }) => ({
     url: path === "" ? base : `${base}${path}`,
     lastModified,
     changeFrequency,
     priority,
   }));
+
+  const merged = await getAllBlogPostsMerged();
+  const blogPosts = merged.map((post) => ({
+    url: `${base}/blog/${post.slug}`,
+    lastModified: new Date(post.date + "T12:00:00"),
+    changeFrequency: "monthly" as const,
+    priority: 0.65,
+  }));
+
+  return [...staticEntries, ...blogPosts];
 }

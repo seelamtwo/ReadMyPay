@@ -33,6 +33,8 @@ export function NavbarClient() {
           <div className="h-8 w-20 animate-pulse rounded-md bg-slate-200/90" />
           <div className="h-8 w-20 animate-pulse rounded-md bg-slate-200/90" />
           <div className="h-8 w-16 animate-pulse rounded-md bg-slate-200/90" />
+          <div className="h-8 w-14 animate-pulse rounded-md bg-slate-200/90" />
+          <div className="h-8 w-16 animate-pulse rounded-md bg-slate-200/90" />
         </div>
       ) : signedIn ? (
         <>
@@ -51,6 +53,11 @@ export function NavbarClient() {
               Support
             </Button>
           </Link>
+          <Link href="/blog">
+            <Button variant="ghost" size="sm">
+              Blog
+            </Button>
+          </Link>
           <AdminNavLink />
           <Button
             variant="outline"
@@ -62,6 +69,11 @@ export function NavbarClient() {
         </>
       ) : (
         <>
+          <Link href="/blog">
+            <Button variant="ghost" size="sm">
+              Blog
+            </Button>
+          </Link>
           <Link href="/login">
             <Button variant="ghost" size="sm">
               Log in
