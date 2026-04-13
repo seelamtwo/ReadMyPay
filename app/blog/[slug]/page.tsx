@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { BlogPostBody } from "@/components/blog/BlogPostBody";
+import { BlogFaqSection } from "@/components/blog/BlogFaqSection";
 import { BlogRelatedPosts } from "@/components/blog/BlogRelatedPosts";
 import { BlogArticleJsonLd } from "@/components/seo/BlogArticleJsonLd";
+import { BlogFaqJsonLd } from "@/components/seo/BlogFaqJsonLd";
 import { getBlogPostBySlugMerged } from "@/lib/blog-data";
 import { buildBlogPostMetadata } from "@/lib/blog-metadata";
 
@@ -40,6 +42,7 @@ export default async function BlogPostPage({ params }: Props) {
   return (
     <div className="flex min-h-screen flex-col">
       <BlogArticleJsonLd post={post} />
+      <BlogFaqJsonLd slug={post.slug} />
       <Navbar />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
         <Link href="/blog" className="text-sm text-emerald-700 hover:underline">
@@ -49,6 +52,7 @@ export default async function BlogPostPage({ params }: Props) {
         <h1 className="mt-2 text-3xl font-bold text-slate-900">{post.title}</h1>
         <p className="mt-3 text-lg text-slate-600">{post.excerpt}</p>
         <BlogPostBody content={post.content} />
+        <BlogFaqSection slug={post.slug} />
         <BlogRelatedPosts slug={post.slug} />
         <p className="mt-10 border-t border-slate-200 pt-8 text-sm text-slate-600">
           <Link href="/blog" className="font-medium text-emerald-700 hover:underline">
