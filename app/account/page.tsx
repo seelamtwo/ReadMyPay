@@ -130,7 +130,7 @@ export default async function AccountPage({
       !subscription.stripeCustomerId.startsWith("pending_")
   );
 
-  let subscriptionSummary =
+  const subscriptionSummary =
     isMonthlyPlan && subscription?.stripeSubscriptionId
       ? await getStripeSubscriptionSummary(subscription.stripeSubscriptionId)
       : null;
