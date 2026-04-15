@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Suspense } from "react";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
+import { GoogleAnalyticsPageView } from "@/components/analytics/GoogleAnalyticsPageView";
+import { getGaMeasurementId } from "@/lib/ga-measurement-id";
 import {
   DEFAULT_DESCRIPTION,
   DEFAULT_OG_IMAGE_PATH,
@@ -81,6 +84,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const gaMeasurementId = getGaMeasurementId();
+
   return (
     <html lang="en">
       <head>
@@ -89,7 +94,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-white font-sans antialiased text-slate-900`}
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          {gaMeasurementId ? (
+            <Suspense fallback={null}>
+              <GoogleAnalyticsPageView measurementId={gaMeasurementId} />
+            </Suspense>
+          ) : null}
+          {children}
+        </Providers>
       </body>
     </html>
   );
