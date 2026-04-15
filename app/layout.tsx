@@ -83,10 +83,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <GoogleAnalytics />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-white font-sans antialiased text-slate-900`}
       >
-        <GoogleAnalytics />
         <Providers>{children}</Providers>
       </body>
     </html>
