@@ -76,7 +76,8 @@ export async function getAllBlogPostsMerged(): Promise<BlogPostWithSeo[]> {
     if (isMissingBlogTableError(e)) {
       return staticOnly();
     }
-    throw e;
+    console.error("[blog] failed to load posts from database; using static posts", e);
+    return staticOnly();
   }
   const dbSlugs = new Set(dbRows.map((r) => r.slug));
   const fromDb = dbRows.map(mapDbRow);
@@ -97,7 +98,9 @@ export async function getBlogPostBySlugMerged(
     });
     if (row) return mapDbRow(row);
   } catch (e) {
-    if (!isMissingBlogTableError(e)) throw e;
+    if (!isMissingBlogTableError(e)) {
+      console.error("[blog] failed to load post from database; trying static posts", e);
+    }
   }
   const stat = staticBlogPosts.find((p) => p.slug === slug);
   if (!stat) return undefined;
